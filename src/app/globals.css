@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  /* Sahara Color Palette */
+  /* Sahara Color Palette (Light) */
   --background: #faf5ee; /* Warm Linen */
   --foreground: #3a302a; /* Earthy Dark */
   
@@ -26,6 +26,22 @@
   /* Fonts */
   --font-manrope: var(--font-manrope);
   --font-garamond: var(--font-garamond);
+}
+
+.dark {
+  /* Sahara Dark Palette */
+  --background: #14110f; /* Deep Earth */
+  --foreground: #f2ede9; /* Warm Off-white */
+  
+  --primary: #e67e22; /* More vibrant Orange for dark mode */
+  --on-primary: #ffffff;
+  
+  --secondary: #a89f98; /* Lighter Warm Gray */
+  --card-bg: #1c1815; /* Card background */
+  --border: rgba(216, 208, 200, 0.15); /* Faint border */
+
+  --shadow-warm: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --shadow-warm-lg: 0 10px 40px rgba(0, 0, 0, 0.6);
 }
 
 @theme {

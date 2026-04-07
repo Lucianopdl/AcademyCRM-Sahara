@@ -12,7 +12,10 @@ import {
   PlusCircle,
   Menu,
   ChevronRight,
-  School
+  School,
+  Moon,
+  Sun,
+  ClipboardCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
@@ -23,6 +26,7 @@ const navItems = [
   { name: "Alumnos", href: "/alumnos", icon: Users },
   { name: "Clases y Talleres", href: "/clases", icon: GraduationCap },
   { name: "Cuotas y Pagos", href: "/pagos", icon: CreditCard },
+  { name: "Asistencias", href: "/asistencias", icon: ClipboardCheck },
   { name: "Configuración", href: "/config", icon: Settings },
 ];
 
@@ -31,6 +35,31 @@ export function Sidebar() {
   const [academyName, setAcademyName] = useState("Sahara");
   const [rubro, setRubro] = useState("Academy Manager");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    // Check local storage or system preference
+    const savedTheme = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    
+    if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
+      setIsDarkMode(true);
+      document.documentElement.classList.add("dark");
+    }
+  }, []);
+
+  const toggleDarkMode = () => {
+    const newMode = !isDarkMode;
+    setIsDarkMode(newMode);
+    if (newMode) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  };
 
   useEffect(() => {
     async function fetchSettings() {
@@ -104,7 +133,20 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="p-6 border-t border-border mt-auto">
+      <div className="p-4 border-t border-border mt-auto">
+        {/* Toggle Theme */}
+        <button
+          onClick={toggleDarkMode}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-secondary hover:bg-primary/5 hover:text-primary transition-all duration-300 mb-2 group"
+        >
+          {isDarkMode ? (
+            <Sun className="w-5 h-5 group-hover:rotate-45 transition-transform duration-500" />
+          ) : (
+            <Moon className="w-5 h-5 group-hover:-rotate-12 transition-transform duration-500" />
+          )}
+          <span className="font-medium text-sm">Cambiar Tema</span>
+        </button>
+
         <button 
           onClick={async () => {
             await supabase.auth.signOut();
