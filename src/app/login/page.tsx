@@ -59,7 +59,7 @@ export default function LoginPage() {
   };
 
   // --- Animation Variants ---
-  const containerVariants = {
+  const containerVariants: any = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -67,7 +67,7 @@ export default function LoginPage() {
     },
   };
 
-  const itemVariants = {
+  const itemVariants: any = {
     hidden: { opacity: 0, y: 20 },
     visible: {
       opacity: 1,
@@ -76,7 +76,7 @@ export default function LoginPage() {
     },
   };
 
-  const brandVariants = {
+  const brandVariants: any = {
     hidden: { opacity: 0, x: -30 },
     visible: {
       opacity: 1,
