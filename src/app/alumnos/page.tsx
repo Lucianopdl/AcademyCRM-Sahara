@@ -345,6 +345,44 @@ export default function AlumnosPage() {
     setSaving(false);
   };
 
+  const generatePdfBlob = async () => {
+    if (!receiptRef.current || !invoiceData) return null;
+    
+    setGeneratingPdf(true);
+    try {
+      const element = receiptRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 3,
+        logging: false,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+      
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      const blob = pdf.output("blob");
+      const filename = `Recibo_${invoiceData.receiptNumber}_${invoiceData.studentName.replace(/\s+/g, '_')}.pdf`;
+      
+      return { blob, filename };
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      showAlert("Error", "No se pudo generar el comprobante. Intenta imprimir la pantalla.", "error");
+      return null;
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
   const handleStatusChange = async (studentId: string, newStatus: 'active' | 'inactive') => {
     const { error } = await supabase.from('students').update({ status: newStatus }).eq('id', studentId);
     if (!error) fetchInitialData();

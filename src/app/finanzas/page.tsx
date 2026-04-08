@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { motion, AnimatePresence } from "framer-motion";
+import html2canvas from "html2canvas-pro";
+import { jsPDF } from "jspdf";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -70,6 +72,8 @@ export default function FinanzasPage() {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
 
   // Form states
   const [expenseForm, setExpenseForm] = useState({
@@ -181,6 +185,39 @@ export default function FinanzasPage() {
     if (!confirm("¿Estás seguro de eliminar este registro?")) return;
     const { error } = await supabase.from('expenses').delete().eq('id', id);
     if (!error) fetchData();
+  };
+
+  const generateReportPdf = async () => {
+    if (!reportRef.current) return;
+    
+    setGeneratingPdf(true);
+    try {
+      const element = reportRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        logging: false,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+      
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Informe_${format(selectedMonth, 'MMMM_yyyy', { locale: es })}.pdf`);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+    } finally {
+      setGeneratingPdf(false);
+    }
   };
 
   const totalIncome = payments.reduce((sum, p) => sum + p.amount, 0);
@@ -457,6 +494,10 @@ export default function FinanzasPage() {
                   </div>
                 </div>
                 <div className="flex gap-2">
+                  <Button disabled={generatingPdf} onClick={generateReportPdf} variant="outline" className="hidden sm:flex rounded-xl gap-2 border-[#E8E2DC]">
+                    {generatingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} 
+                    Exportar PDF
+                  </Button>
                   <Button onClick={() => window.print()} variant="outline" className="hidden sm:flex rounded-xl gap-2 border-[#E8E2DC]">
                     <Printer className="w-4 h-4" /> Imprimir
                   </Button>
@@ -468,7 +509,7 @@ export default function FinanzasPage() {
 
               {/* Documento */}
               <div className="flex-1 overflow-y-auto p-4 md:p-12 bg-[#F5F1EE]/30" id="print-area">
-                <div className="bg-white shadow-xl rounded-[24px] md:rounded-[32px] p-6 md:p-12 max-w-2xl mx-auto border border-[#847365]/5 min-h-[80vh] flex flex-col font-sans">
+                <div ref={reportRef} className="bg-white shadow-xl rounded-[24px] md:rounded-[32px] p-6 md:p-12 max-w-2xl mx-auto border border-[#847365]/5 min-h-[80vh] flex flex-col font-sans">
                    <div className="flex justify-between items-start mb-12">
                       <div className="px-4 py-2 bg-[#2D241E] rounded-xl text-white font-black italic tracking-tighter">SAHARA</div>
                       <div className="text-right">
