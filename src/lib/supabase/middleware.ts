@@ -40,21 +40,32 @@ export async function updateSession(request: NextRequest) {
       console.log("Middleware Auth Error:", error.message);
     }
 
-    const isLoginPage = request.nextUrl.pathname.startsWith('/login');
-    const isAuthPage = request.nextUrl.pathname.startsWith('/auth');
+    const path = request.nextUrl.pathname;
+    
+    // Lista Blanca: Evaluamos la sesión SOLO si el usuario intenta entrar a áreas Core
+    const isProtectedRoute = 
+      path === '/' || 
+      path.startsWith('/alumnos') || 
+      path.startsWith('/asistencias') || 
+      path.startsWith('/clases') || 
+      path.startsWith('/finanzas') || 
+      path.startsWith('/pagos') ||
+      path.startsWith('/config');
 
-    if (!user && !isLoginPage && !isAuthPage) {
-      console.log("No user found in middleware, redirecting to /login from:", request.nextUrl.pathname);
-      const url = request.nextUrl.clone()
-      url.pathname = '/login'
-      return NextResponse.redirect(url)
+    const isLoginPage = path.startsWith('/login');
+
+    if (!user && isProtectedRoute) {
+      console.log("⚠️ Intento de acceso sin sesión a ruta protegida:", path);
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      return NextResponse.redirect(url);
     }
 
     if (user && isLoginPage) {
-      console.log("User already logged in, redirecting to / from /login");
-      const url = request.nextUrl.clone()
-      url.pathname = '/'
-      return NextResponse.redirect(url)
+      console.log("✅ Usuario autenticado en pantala de login, regresando al home.");
+      const url = request.nextUrl.clone();
+      url.pathname = '/';
+      return NextResponse.redirect(url);
     }
 
     return supabaseResponse
