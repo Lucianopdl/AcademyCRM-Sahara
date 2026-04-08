@@ -10,7 +10,7 @@ import {
   ArrowRight,
   AlertTriangle,
 } from "lucide-react";
-import { createBrowserClient } from "@supabase/ssr";
+import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 
@@ -21,12 +21,6 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-
-  // Cliente de Navegador (SSR) que maneja cookies automáticamente
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder"
-  );
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,11 +41,10 @@ export default function LoginPage() {
         throw authError;
       }
 
-      // Éxito - Refrescamos para que el proxy vea las cookies
-      router.refresh();
-      router.replace("/");
+      // Éxito - Redirigimos a la página principal
+      router.push("/");
     } catch (err: any) {
-      console.error("Login detail:", err);
+      console.error("LOGIN ERROR:", err);
       setError(err.message || "Error al intentar iniciar sesión.");
     } finally {
       setLoading(false);
@@ -399,6 +392,8 @@ export default function LoginPage() {
               {/* Submit Button — Vibrant orange gradient */}
               <button
                 id="login-submit"
+                type="submit"
+                onClick={() => console.log("Botón clickeado directamente")}
                 disabled={loading}
                 className="w-full bg-gradient-to-r from-[#D35400] via-[#E67E22] to-[#F39C12] text-white py-4 rounded-2xl font-bold text-sm hover:from-[#C0490A] hover:via-[#D35400] hover:to-[#E67E22] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2.5 shadow-lg shadow-[#E67E22]/20 disabled:opacity-50 disabled:cursor-not-allowed group relative overflow-hidden"
               >

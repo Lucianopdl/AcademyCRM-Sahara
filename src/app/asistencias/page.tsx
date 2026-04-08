@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Sidebar } from "@/components/sidebar";
+import { DashboardShell } from "@/components/dashboard-shell";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ClipboardCheck,
@@ -54,6 +54,19 @@ export default function AsistenciasPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingStatus, setSavingStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function getSession() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+      } else {
+        console.warn("No active session found");
+      }
+    }
+    getSession();
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -155,9 +168,28 @@ export default function AsistenciasPage() {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
     try {
+      if (!userId) {
+        console.log("Intentando recuperar sesión...");
+        const sessionRes = await supabase.auth.getSession();
+        console.log("Resultado de getSession:", sessionRes);
+
+        if (sessionRes.data.session?.user) {
+          setUserId(sessionRes.data.session.user.id);
+        } else {
+          const userRes = await supabase.auth.getUser();
+          console.log("Resultado de getUser:", userRes);
+
+          if (!userRes.data.user) {
+            throw new Error(`No hay una sesión activa. (Error: ${userRes.error?.message || "Sin sesión local"})`);
+          }
+          setUserId(userRes.data.user.id);
+        }
+      }
+
       const records = Object.values(attendanceData)
         .filter(att => att.status && att.student_id && att.class_id)
         .map(att => ({
+          user_id: userId,
           student_id: att.student_id,
           status: att.status,
           date: dateStr,
@@ -193,38 +225,39 @@ export default function AsistenciasPage() {
   const filteredStudents = students;
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-      <main className="flex-1 p-8">
+    <DashboardShell>
+      <div className="p-4 lg:p-8">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8">
             <div>
-              <h1 className="text-3xl font-serif font-bold text-foreground">Asistencias</h1>
-              <p className="text-secondary/70 mt-1">Control diario de alumnos por disciplina.</p>
+              <h1 className="text-3xl font-serif font-bold text-[#111]">Asistencias</h1>
+              <p className="text-[#847365] mt-1 text-sm font-medium">Control diario por disciplina.</p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 w-full lg:w-auto">
               <Button
                 variant="outline"
                 size="icon"
+                className="h-10 w-10 shrink-0"
                 onClick={() => setSelectedDate(subDays(selectedDate, 1))}
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-5 h-5" />
               </Button>
-              <div className="flex items-center gap-2 bg-card border border-border px-4 py-2 rounded-lg font-medium shadow-sm min-w-[200px] justify-center">
-                <Calendar className="w-4 h-4 text-primary" />
-                {format(selectedDate, "eeee dd 'de' MMMM", { locale: es })}
+              <div className="flex-1 lg:flex-none flex items-center gap-2 bg-white border border-[#E8E2DC] px-4 py-2.5 rounded-xl font-bold shadow-sm justify-center text-sm">
+                <Calendar className="w-4 h-4 text-[#E67E22]" />
+                <span className="capitalize">{format(selectedDate, "eee dd 'de' MMMM", { locale: es })}</span>
               </div>
               <Button
                 variant="outline"
                 size="icon"
+                className="h-10 w-10 shrink-0"
                 onClick={() => setSelectedDate(addDays(selectedDate, 1))}
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-5 h-5" />
               </Button>
               {!isSameDay(selectedDate, startOfToday()) && (
-                <Button variant="ghost" size="sm" onClick={() => setSelectedDate(startOfToday())}>
+                <Button variant="ghost" className="text-xs font-bold" onClick={() => setSelectedDate(startOfToday())}>
                   Hoy
                 </Button>
               )}
@@ -232,120 +265,163 @@ export default function AsistenciasPage() {
           </div>
 
           {/* Filters & Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="relative md:col-span-1">
-              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary/40" />
+          <div className="flex flex-col sm:flex-row gap-3 mb-8">
+            <div className="relative flex-1">
+              <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#847365]/40" />
               <select
                 value={selectedClassId}
                 onChange={(e) => setSelectedClassId(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-card border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
+                className="w-full h-12 lg:h-14 pl-12 pr-4 bg-white border border-[#E8E2DC] rounded-2xl text-sm font-bold focus:ring-[#E67E22] appearance-none cursor-pointer shadow-sm"
               >
-                <option value="all">Seleccionar Clase...</option>
+                <option value="all">Elegir Clase...</option>
                 {classes.map(cls => (
                   <option key={cls.id} value={cls.id}>{cls.name}</option>
                 ))}
               </select>
             </div>
 
-            <div className="flex-1 md:col-span-1" />
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1 sm:flex-none h-12 lg:h-14 rounded-2xl gap-2 font-bold px-6"
+                onClick={markAllPresent}
+                disabled={loading || selectedClassId === "all" || filteredStudents.length === 0}
+              >
+                <Check className="w-4 h-4" />
+                <span className="hidden sm:inline">Todos Presentes</span>
+                <span className="sm:hidden">Todos</span>
+              </Button>
 
-            <Button
-              variant="outline"
-              className="md:col-span-1 gap-2"
-              onClick={markAllPresent}
-              disabled={loading || selectedClassId === "all" || filteredStudents.length === 0}
-            >
-              <Check className="w-4 h-4" />
-              Todos Presentes
-            </Button>
-
-            <Button
-              variant="primary"
-              className="md:col-span-1 shadow-warm gap-2"
-              onClick={saveAttendance}
-              disabled={saving || filteredStudents.length === 0 || selectedClassId === "all"}
-            >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              {savingStatus === 'success' ? '¡Guardado!' : 'Guardar Asistencias'}
-            </Button>
+              <Button
+                variant="primary"
+                className="flex-1 sm:flex-none h-12 lg:h-14 rounded-2xl shadow-lg gap-2 font-bold px-6 bg-[#E67E22] text-white hover:bg-[#D35400] transition-all active:scale-95"
+                onClick={saveAttendance}
+                disabled={saving || filteredStudents.length === 0 || selectedClassId === "all"}
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {savingStatus === 'success' ? '¡Listo!' : 'Guardar'}
+              </Button>
+            </div>
           </div>
 
-          {/* Attendance Table */}
-          <div className="bg-card border border-border rounded-xl shadow-warm overflow-hidden">
+          {/* Attendance List */}
+          <div className="space-y-4 mb-20">
             {loading ? (
-              <div className="p-20 flex flex-col items-center justify-center gap-4 text-secondary/40">
+              <div className="p-20 flex flex-col items-center justify-center gap-4 text-[#847365]/40">
                 <Loader2 className="w-8 h-8 animate-spin" />
-                <p className="animate-pulse">Cargando lista de alumnos...</p>
+                <p className="animate-pulse font-bold text-sm">Cargando alumnos...</p>
               </div>
             ) : selectedClassId === "all" ? (
-              <div className="p-20 flex flex-col items-center justify-center gap-4 text-secondary/40 text-center">
-                <Filter className="w-12 h-12 mb-2" />
-                <p className="text-lg font-serif">Selecciona una clase</p>
-                <p className="text-sm max-w-xs">Elegí una clase del menú superior para ver la lista de alumnos y tomar asistencia.</p>
+              <div className="p-16 flex flex-col items-center justify-center gap-4 text-[#847365]/40 text-center bg-white/50 rounded-[40px] border-2 border-dashed border-[#847365]/10">
+                <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-inner mb-2">
+                  <ClipboardCheck className="w-10 h-10 text-[#847365]/20" />
+                </div>
+                <p className="text-xl font-serif font-bold text-[#3A3028]">Inicia el Registro</p>
+                <p className="text-xs max-w-xs font-medium">Seleccioná una clase para comenzar a tomar asistencia hoy.</p>
               </div>
             ) : filteredStudents.length === 0 ? (
-              <div className="p-20 flex flex-col items-center justify-center gap-4 text-secondary/40">
+              <div className="p-16 flex flex-col items-center justify-center gap-4 text-[#847365]/40 text-center">
                 <AlertCircle className="w-12 h-12" />
-                <p>No hay alumnos inscriptos en esta clase.</p>
+                <p className="font-bold">No hay alumnos inscriptos.</p>
               </div>
             ) : (
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-border bg-muted/30">
-                    <th className="px-6 py-4 text-xs uppercase tracking-wider font-bold text-secondary/60">Alumno</th>
-                    <th className="px-6 py-4 text-xs uppercase tracking-wider font-bold text-secondary/60 text-center">Estado de Asistencia</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
+              <>
+                {/* Mobile View: Cards */}
+                <div className="grid grid-cols-1 gap-3 md:hidden">
                   {filteredStudents.map((student) => {
                     const att = attendanceData[student.id];
                     return (
-                      <tr key={student.id} className="hover:bg-primary/5 transition-colors group">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
-                              {student.full_name.charAt(0)}
-                            </div>
-                            <span className="font-semibold text-foreground">{student.full_name}</span>
+                      <motion.div 
+                        key={student.id}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-white rounded-3xl p-5 border border-[#847365]/10 shadow-sm"
+                      >
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className={cn(
+                            "w-10 h-10 rounded-xl flex items-center justify-center text-white font-serif font-extrabold text-lg shadow-sm transition-colors",
+                            att?.status === 'present' ? 'bg-emerald-500' : 
+                            att?.status === 'absent' ? 'bg-rose-500' :
+                            att?.status === 'late' ? 'bg-amber-500' :
+                            att?.status === 'justified' ? 'bg-sky-500' : 'bg-[#847365]'
+                          )}>
+                            {student.full_name.charAt(0)}
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center justify-center gap-2">
-                            <AttendanceButton
-                              active={att?.status === 'present'}
-                              onClick={() => handleStatusChange(student.id, 'present')}
-                              icon={<Check className="w-4 h-4" />}
-                              label="Presente"
-                              variant="success"
-                            />
-                            <AttendanceButton
-                              active={att?.status === 'absent'}
-                              onClick={() => handleStatusChange(student.id, 'absent')}
-                              icon={<X className="w-4 h-4" />}
-                              label="Ausente"
-                              variant="danger"
-                            />
-                            <AttendanceButton
-                              active={att?.status === 'late'}
-                              onClick={() => handleStatusChange(student.id, 'late')}
-                              icon={<Clock className="w-4 h-4" />}
-                              label="Tarde"
-                              variant="warning"
-                            />
-                            <AttendanceButton
-                              active={att?.status === 'justified'}
-                              onClick={() => handleStatusChange(student.id, 'justified')}
-                              icon={<HelpCircle className="w-4 h-4" />}
-                              label="Justificado"
-                              variant="info"
-                            />
-                          </div>
-                        </td>
-                      </tr>
+                          <span className="font-bold text-[#111] leading-tight">{student.full_name}</span>
+                        </div>
+                        
+                        <div className="grid grid-cols-4 gap-2">
+                          <button 
+                            onClick={() => handleStatusChange(student.id, 'present')}
+                            className={cn("flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all", att?.status === 'present' ? "bg-emerald-500 text-white shadow-lg" : "bg-emerald-50 text-emerald-600")}
+                          >
+                            <Check className="w-5 h-5" />
+                            <span className="text-[8px] font-black uppercase">Pres</span>
+                          </button>
+                          <button 
+                            onClick={() => handleStatusChange(student.id, 'absent')}
+                            className={cn("flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all", att?.status === 'absent' ? "bg-rose-500 text-white shadow-lg" : "bg-rose-50 text-rose-600")}
+                          >
+                            <X className="w-5 h-5" />
+                            <span className="text-[8px] font-black uppercase">Aus</span>
+                          </button>
+                          <button 
+                            onClick={() => handleStatusChange(student.id, 'late')}
+                            className={cn("flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all", att?.status === 'late' ? "bg-amber-500 text-white shadow-lg" : "bg-amber-50 text-amber-600")}
+                          >
+                            <Clock className="w-5 h-5" />
+                            <span className="text-[8px] font-black uppercase">Tard</span>
+                          </button>
+                          <button 
+                            onClick={() => handleStatusChange(student.id, 'justified')}
+                            className={cn("flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all", att?.status === 'justified' ? "bg-sky-500 text-white shadow-lg" : "bg-sky-50 text-sky-600")}
+                          >
+                            <HelpCircle className="w-5 h-5" />
+                            <span className="text-[8px] font-black uppercase">Just</span>
+                          </button>
+                        </div>
+                      </motion.div>
                     );
                   })}
-                </tbody>
-              </table>
+                </div>
+
+                {/* Desktop View: Table */}
+                <div className="hidden md:block bg-white rounded-[40px] border border-[#847365]/10 shadow-sm overflow-hidden">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="border-b border-[#847365]/5 bg-[#F5F1EE]/30">
+                        <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-[#847365]">Alumno</th>
+                        <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-[#847365] text-center">Asistencia</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#847365]/5">
+                      {filteredStudents.map((student) => {
+                        const att = attendanceData[student.id];
+                        return (
+                          <tr key={student.id} className="hover:bg-[#F5F1EE]/20 transition-colors">
+                            <td className="px-8 py-5">
+                              <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-xl bg-[#847365]/10 flex items-center justify-center text-[#847365] font-serif font-bold">
+                                  {student.full_name.charAt(0)}
+                                </div>
+                                <span className="font-bold text-[#111]">{student.full_name}</span>
+                              </div>
+                            </td>
+                            <td className="px-8 py-5">
+                              <div className="flex items-center justify-center gap-3">
+                                <AttendanceButton active={att?.status === 'present'} onClick={() => handleStatusChange(student.id, 'present')} icon={<Check className="w-4 h-4" />} label="Presente" variant="success" />
+                                <AttendanceButton active={att?.status === 'absent'} onClick={() => handleStatusChange(student.id, 'absent')} icon={<X className="w-4 h-4" />} label="Ausente" variant="danger" />
+                                <AttendanceButton active={att?.status === 'late'} onClick={() => handleStatusChange(student.id, 'late')} icon={<Clock className="w-4 h-4" />} label="Tarde" variant="warning" />
+                                <AttendanceButton active={att?.status === 'justified'} onClick={() => handleStatusChange(student.id, 'justified')} icon={<HelpCircle className="w-4 h-4" />} label="Justificado" variant="info" />
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
 
@@ -357,8 +433,8 @@ export default function AsistenciasPage() {
             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-sky-500" /> Justificado</div>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </DashboardShell>
   );
 }
 

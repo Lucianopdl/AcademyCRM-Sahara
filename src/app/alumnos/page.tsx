@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { Sidebar } from "@/components/sidebar";
+import { DashboardShell } from "@/components/dashboard-shell";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import html2canvas from "html2canvas-pro";
@@ -32,6 +32,7 @@ import {
   Gift,
   User,
   Hash,
+  Filter,
   Check,
   Printer,
   Share2,
@@ -90,11 +91,9 @@ export default function AlumnosPage() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [hasPromo, setHasPromo] = useState(false);
   
-  // Bulk Selection State
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkLoading, setIsBulkLoading] = useState(false);
 
-  // Invoice/Receipt State
   const [invoiceData, setInvoiceData] = useState<{
     isOpen: boolean;
     studentName: string;
@@ -112,33 +111,6 @@ export default function AlumnosPage() {
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
 
-  const generatePdfBlob = async (): Promise<{ blob: Blob; filename: string } | null> => {
-    if (!receiptRef.current || !invoiceData) return null;
-    setGeneratingPdf(true);
-    try {
-      const canvas = await html2canvas(receiptRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-      });
-      const imgData = canvas.toDataURL('image/png');
-      const imgWidth = 210;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const yOffset = (297 - imgHeight) / 2;
-      pdf.addImage(imgData, 'PNG', 0, yOffset > 0 ? yOffset : 10, imgWidth, imgHeight);
-      const filename = `Comprobante_${invoiceData.receiptNumber}.pdf`;
-      const blob = pdf.output('blob');
-      return { blob, filename };
-    } catch (err) {
-      console.error('Error generating PDF:', err);
-      return null;
-    } finally {
-      setGeneratingPdf(false);
-    }
-  };
-  
-  // Student Form State
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
@@ -152,7 +124,6 @@ export default function AlumnosPage() {
     discount_type: "percentage"
   });
 
-  // Payment Form State
   const [paymentData, setPaymentData] = useState({
     amount: "",
     method: "cash",
@@ -161,7 +132,6 @@ export default function AlumnosPage() {
     notes: ""
   });
 
-  // Alert/Confirm Modal State
   const [alertConfig, setAlertConfig] = useState<{
     isOpen: boolean,
     title: string,
@@ -247,10 +217,8 @@ export default function AlumnosPage() {
       createdStudentId = res.data?.id;
     }
 
-    // Automations upon success: Enrollments and Initial Payments
     if (!error && createdStudentId && formData.category_id) {
        try {
-         // 1. Ensure Class exists for this category, or create default
          const { data: existingClasses } = await supabase.from('classes').select('id').eq('category_id', formData.category_id).limit(1);
          let classId = existingClasses?.[0]?.id;
 
@@ -263,7 +231,6 @@ export default function AlumnosPage() {
             classId = newClass?.id;
          }
 
-         // 2. Enroll student in class
          if (classId) {
             await supabase.from('enrollments').upsert({
                student_id: createdStudentId,
@@ -271,7 +238,6 @@ export default function AlumnosPage() {
             }, { onConflict: 'student_id, class_id' });
          }
 
-         // 3. Generate initial payment fee ONLY if it's a new student
          if (!editingStudent) {
             const currentMonth = new Date().getMonth() + 1;
             const currentYear = new Date().getFullYear();
@@ -297,7 +263,6 @@ export default function AlumnosPage() {
          }
        } catch (automationError) {
          console.error("Error setting up automations:", automationError);
-         // No bloqueamos el success del usuario si falló el automation marginalmente.
        }
     }
     
@@ -322,7 +287,6 @@ export default function AlumnosPage() {
     
     setSaving(true);
     
-    // Verificamos si ya existe un pago pendiente para este alumno/mes
     const existingPayment = payments.find(p => 
       p.student_id === selectedStudent.id && 
       p.period_month === paymentData.month && 
@@ -387,10 +351,7 @@ export default function AlumnosPage() {
   };
 
   const handleBulkGenerateFees = async () => {
-    // Solo generamos cargos para alumnos activos
     const activeStudents = students.filter(s => s.status === 'active');
-    
-    // Filtramos los que YA tienen un cargo (pendiente o pago) este mes
     const currentMonth = new Date().getMonth() + 1;
     const currentYear = new Date().getFullYear();
     const studentsWithoutFee = activeStudents.filter(s => 
@@ -433,7 +394,6 @@ export default function AlumnosPage() {
   const handleBulkGenerateSelectedFees = async () => {
     if (!selectedIds.length) return;
 
-    // Solo procesamos alumnos que estén dentro de los seleccionados
     const selectedStudents = students.filter(s => selectedIds.includes(s.id) && s.status === 'active');
     
     if (selectedStudents.length === 0) {
@@ -444,7 +404,6 @@ export default function AlumnosPage() {
     const currentMonth = new Date().getMonth() + 1;
     const currentYear = new Date().getFullYear();
 
-    // Filtramos los que YA tienen un cargo este mes
     const studentsWithoutFee = selectedStudents.filter(s => 
       !payments.some(p => p.student_id === s.id && p.period_month === currentMonth && p.period_year === currentYear)
     );
@@ -576,22 +535,21 @@ export default function AlumnosPage() {
   });
 
   return (
-    <div className="flex bg-[#F0EEEB] min-h-screen text-[#111] font-sans selection:bg-primary/20">
-      <Sidebar />
-      <main className="flex-1 p-6 lg:p-10 overflow-y-auto relative">
-        <header className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
+    <DashboardShell>
+      <div className="p-4 lg:p-10 relative">
+        <header className="flex flex-col lg:flex-row lg:items-center justify-between mb-8 gap-6">
           <div>
-            <h1 className="text-4xl font-serif font-bold text-[#111] tracking-tight">Gestión de Alumnos</h1>
-            <p className="text-[#3A3028] font-bold mt-1">Legajos individuales y control administrativo del alumnado.</p>
+            <h1 className="text-3xl lg:text-4xl font-serif font-bold text-[#111] tracking-tight">Gestión de Alumnos</h1>
+            <p className="text-[#3A3028] text-sm font-bold mt-1">Legajos individuales y control administrativo.</p>
           </div>
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <Button 
               onClick={handleBulkGenerateFees}
               disabled={isBulkLoading}
-              className="gap-2 px-8 h-14 rounded-3xl font-bold transition-all bg-[#111] text-white hover:bg-black active:scale-95 shadow-lg flex items-center"
+              className="gap-2 px-6 h-12 lg:h-14 rounded-2xl lg:rounded-3xl font-bold transition-all bg-[#111] text-white hover:bg-black active:scale-95 shadow-lg flex items-center justify-center order-2 sm:order-1"
             >
               {isBulkLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Calculator className="w-5 h-5 text-[#E67E22]" />}
-              Facturación Masiva
+              <span className="text-xs uppercase tracking-widest">Facturación</span>
             </Button>
             <Button 
               onClick={() => {
@@ -602,9 +560,9 @@ export default function AlumnosPage() {
                 }
                 setShowAddForm(!showAddForm);
               }}
-              className={cn("gap-2 px-8 h-14 rounded-3xl font-bold transition-all shadow-lg active:scale-95", showAddForm ? "bg-[#847365] text-white" : "bg-[#E67E22] hover:bg-[#D35400] text-white shadow-[#E67E22]/20")}
+              className={cn("gap-2 px-6 h-12 lg:h-14 rounded-2xl lg:rounded-3xl font-bold transition-all shadow-lg active:scale-95 order-1 sm:order-2", showAddForm ? "bg-[#847365] text-white" : "bg-[#E67E22] hover:bg-[#D35400] text-white shadow-[#E67E22]/20")}
             >
-              {showAddForm ? "Cerrar Panel" : <><Plus className="w-5 h-5" /> Inscribir Alumno</>}
+              {showAddForm ? "Cerrar Panel" : <><Plus className="w-5 h-5" /> <span className="text-xs uppercase tracking-widest">Inscribir</span></>}
             </Button>
           </div>
         </header>
@@ -628,7 +586,9 @@ export default function AlumnosPage() {
                       <input type="number" required value={paymentData.amount} onChange={(e) => setPaymentData({...paymentData, amount: e.target.value})} className="w-full h-16 bg-white border-none rounded-3xl px-6 text-2xl font-black text-[#2D241E] focus:ring-4 focus:ring-[#E67E22]/10 shadow-inner" />
                     </div>
                     <div className="space-y-2"><label className="text-[10px] font-bold uppercase tracking-widest text-[#847365]/60">Periodo</label>
-                      <select value={paymentData.month} onChange={(e) => setPaymentData({...paymentData, month: parseInt(e.target.value)})} className="w-full h-14 bg-white border-none rounded-2xl px-5 font-bold">{months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select>
+                      <select value={paymentData.month} onChange={(e) => setPaymentData({...paymentData, month: parseInt(e.target.value)})} className="w-full h-14 bg-white border-none rounded-2xl px-5 font-bold">
+                        {Array.from({length: 12}).map((_, i) => <option key={i} value={i + 1}>{new Date(0, i).toLocaleString('es-AR', { month: 'long' })}</option>)}
+                      </select>
                     </div>
                     <div className="space-y-2"><label className="text-[10px] font-bold uppercase tracking-widest text-[#847365]/60">Método</label>
                       <select value={paymentData.method} onChange={(e) => setPaymentData({...paymentData, method: e.target.value})} className="w-full h-14 bg-white border-none rounded-2xl px-5 font-bold"><option value="cash">Efectivo</option><option value="transfer">Transferencia</option></select>
@@ -651,7 +611,6 @@ export default function AlumnosPage() {
               
               <form onSubmit={handleAddStudent} className="space-y-12">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-                  {/* Bloque 1: Identidad */}
                   <div className="space-y-6">
                     <div className="flex items-center gap-2 mb-2"><IdCard className="w-4 h-4 text-[#E67E22]" /><h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#847365]">Identidad</h4></div>
                     <div className="space-y-3">
@@ -667,7 +626,6 @@ export default function AlumnosPage() {
                     </div>
                   </div>
 
-                  {/* Bloque 2: Contacto */}
                   <div className="space-y-6">
                     <div className="flex items-center gap-2 mb-2"><Mail className="w-4 h-4 text-[#E67E22]" /><h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#847365]">Contacto & Ubicación</h4></div>
                     <div className="space-y-3">
@@ -683,7 +641,6 @@ export default function AlumnosPage() {
                     </div>
                   </div>
 
-                  {/* Bloque 3: Administrativo */}
                   <div className="bg-[#F5F1EE] p-8 rounded-[40px] border-2 border-transparent transition-all space-y-6">
                     <div>
                         <div className="flex items-center gap-2 mb-4"><DollarSign className="w-4 h-4 text-[#E67E22]" /><h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#847365]">Config de Cuota</h4></div>
@@ -724,41 +681,126 @@ export default function AlumnosPage() {
           )}
         </AnimatePresence>
 
+        {/* Search and Filters Bar */}
+        <section className="mb-8 flex flex-col lg:flex-row gap-4">
+          <div className="relative flex-1 group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#847365] transition-colors group-focus-within:text-[#E67E22]" />
+            <input 
+              placeholder="Buscar por nombre, DNI o teléfono..." 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-12 h-12 lg:h-14 bg-white/60 border-white/40 rounded-2xl lg:rounded-3xl focus:ring-[#E67E22] focus:border-[#E67E22] transition-all placeholder:text-[#847365]/50 text-base w-full outline-none"
+            />
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="flex-1 lg:w-48 h-12 lg:h-14 bg-white/60 border-white/40 rounded-2xl lg:rounded-3xl px-4 text-[#3A3028] font-medium focus:ring-[#E67E22] outline-none transition-all appearance-none cursor-pointer"
+            >
+              <option value="all">Todas las categorías</option>
+              {categories.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </select>
+
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="flex-1 lg:w-48 h-12 lg:h-14 bg-white/60 border-white/40 rounded-2xl lg:rounded-3xl px-4 text-[#3A3028] font-medium focus:ring-[#E67E22] outline-none transition-all appearance-none cursor-pointer"
+            >
+              <option value="all">Estado de Pago (Todos)</option>
+              <option value="paid" className="text-emerald-600 font-bold">Al Día</option>
+              <option value="debtor" className="text-rose-600 font-bold">Morosos</option>
+            </select>
+
+            <Button className="w-12 lg:w-14 h-12 lg:h-14 rounded-2xl lg:rounded-3xl bg-white/60 border-white/40 text-[#847365] hover:text-[#E67E22] hover:bg-white transition-all shadow-sm flex items-center justify-center p-0">
+              <Filter className="w-5 h-5" />
+            </Button>
+          </div>
+        </section>
+
         {/* Listado Principal */}
-        <div className="bg-white rounded-[48px] border border-[#847365]/5 shadow-sm overflow-hidden pb-10">
-          <div className="flex flex-col md:flex-row border-b border-[#847365]/5">
-            <div className="flex p-4 gap-2">
-              <button onClick={() => setActiveTab('active')} className={cn("px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all", activeTab === 'active' ? "bg-[#111] text-white shadow-xl" : "text-[#3A3028] font-black border-2 border-[#DED4CA] hover:bg-white")}>Activos</button>
-              <button onClick={() => setActiveTab('inactive')} className={cn("px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all", activeTab === 'inactive' ? "bg-[#5E4D3F] text-white shadow-xl" : "text-[#3A3028] font-black border-2 border-[#DED4CA] hover:bg-white")}>Archivados</button>
-            </div>
-            <div className="flex-1 p-4 flex flex-col md:flex-row items-center gap-5 bg-white border-l border-[#DED4CA]">
-              <div className="flex items-center gap-3 w-full md:w-1/3">
-                <Search className="w-5 h-5 text-[#111]/60" />
-                <input placeholder="Buscar por nombre o DNI..." className="bg-transparent border-none focus:outline-none w-full text-[#111] font-black text-lg placeholder:text-[#3A3028]/60" value={search} onChange={(e) => setSearch(e.target.value)} />
-              </div>
-              <div className="flex gap-3 w-full md:w-2/3 justify-end border-t md:border-t-0 md:border-l border-[#DED4CA] pt-4 md:pt-0 md:pl-5">
-                <select 
-                  value={filterCategory} 
-                  onChange={(e) => setFilterCategory(e.target.value)}
-                  className="bg-[#F5F1EE] border-2 border-[#DED4CA] rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-[#111] focus:border-[#E67E22] transition-colors"
+        {/* Listado Principal - Mobile First Display Logic */}
+        <div className="space-y-4 mb-24">
+          
+          {/* VISTA MÓVIL: Tarjetas (grid 1 col) */}
+          <div className="grid grid-cols-1 gap-4 lg:hidden">
+            {loading ? (
+              <div className="py-20 text-center"><Loader2 className="w-10 h-10 animate-spin text-[#E67E22] mx-auto opacity-40" /></div>
+            ) : filteredStudents.map((s) => {
+              const payment = payments.find(p => p.student_id === s.id);
+              const isPaid = payment?.status === 'completed';
+              const hasPending = payment?.status === 'pending';
+              
+              return (
+                <motion.div 
+                  key={s.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={cn(
+                    "bg-white rounded-3xl p-5 border shadow-sm relative overflow-hidden transition-all",
+                    selectedIds.includes(s.id) ? "border-[#E67E22] ring-1 ring-[#E67E22]" : "border-[#847365]/10"
+                  )}
                 >
-                  <option value="all">Todas las Clases</option>
-                  {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-                </select>
-                <select 
-                  value={filterStatus} 
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="bg-[#F5F1EE] border-2 border-[#DED4CA] rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-[#111] focus:border-[#E67E22] transition-colors"
-                >
-                  <option value="all">Todos los Estados</option>
-                  <option value="paid" className="text-green-800 font-bold">Al Día</option>
-                  <option value="debtor" className="text-red-800 font-bold">Morosos</option>
-                </select>
-              </div>
-            </div>
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-[#E67E22] text-white flex items-center justify-center font-serif font-bold text-xl shadow-sm">
+                        {s.full_name.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <Link href={`/alumnos/${s.id}`} className="font-bold text-[#111] leading-tight block truncate">{s.full_name}</Link>
+                        <p className="text-[10px] font-black text-[#D35400] uppercase tracking-wider">{categories.find(c => c.id === s.category_id)?.name || 'SIN CLASE'}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => openEdit(s)} className="p-2 bg-[#F5F1EE] rounded-xl text-[#847365]"><Pencil className="w-4 h-4" /></button>
+                      <button onClick={() => openPayment(s)} className="p-2 bg-[#E67E22]/10 rounded-xl text-[#E67E22]"><Receipt className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex flex-col">
+                      <span className="text-[8px] font-black uppercase tracking-widest text-[#B5A99A]">DNI</span>
+                      <span className="text-xs font-bold text-[#3A3028]">{s.dni || "-"}</span>
+                    </div>
+                    <div>
+                      {isPaid ? (
+                        <span className="bg-green-100 text-green-900 px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border border-green-200">Al Día</span>
+                      ) : hasPending ? (
+                        <span className="bg-orange-100 text-orange-900 px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border border-orange-200">Deuda: ${payment?.amount}</span>
+                      ) : (
+                        <span className="bg-gray-100 text-gray-500 px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border border-gray-200">Sin Cargo</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-[#847365]/5">
+                    <button 
+                      onClick={() => toggleSelectOne(s.id)}
+                      className="flex items-center gap-2"
+                    >
+                      <div className={cn(
+                        "w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all",
+                        selectedIds.includes(s.id) ? "bg-[#111] border-[#111]" : "border-[#847365]/20 bg-white"
+                      )}>
+                        {selectedIds.includes(s.id) && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-[#847365]">Seleccionar</span>
+                    </button>
+                    
+                    <Link href={`/alumnos/${s.id}`} className="text-[10px] font-black uppercase tracking-widest text-[#E67E22] flex items-center gap-1">
+                      Ver Ficha <Eye className="w-3 h-3" />
+                    </Link>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
 
-          <table className="w-full text-left">
+          {/* VISTA DESKTOP: Tabla Tradicional */}
+          <div className="hidden lg:block bg-white rounded-[40px] border border-[#847365]/10 shadow-sm overflow-hidden pb-6">
+            <table className="w-full text-left">
             <thead className="border-b-2 border-[#DED4CA]">
               <tr className="bg-[#EBE5DF]">
                 <th className="pl-14 py-6 w-32 text-left">
@@ -940,7 +982,7 @@ export default function AlumnosPage() {
             </motion.div>
           )}
         </AnimatePresence>
-      </main>
+      </div>
       {/* Modal de Comprobante / Factura Premium */}
       <AnimatePresence>
         {invoiceData?.isOpen && (
@@ -1170,7 +1212,9 @@ _Sahara · Gestión Académica_`);
       <style jsx global>{`
         .shadow-warm { box-shadow: 0 10px 40px -10px rgba(132, 115, 101, 0.12); }
       `}</style>
-    </div>
+      </div>
+    </DashboardShell>
   );
 }
+
 const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];

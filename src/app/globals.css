@@ -26,6 +26,7 @@
   /* Fonts */
   --font-manrope: var(--font-manrope);
   --font-garamond: var(--font-garamond);
+  --mobile-nav-height: 72px;
 }
 
 .dark {
@@ -80,5 +81,63 @@
   
   .btn-primary {
     @apply bg-primary text-on-primary px-6 py-2 rounded-md font-medium transition-all duration-300 hover:shadow-warm-lg hover:brightness-110 active:scale-95;
+  }
+}
+
+@layer utilities {
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .tap-highlight-none {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Glassmorphism */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.dark .glass {
+  background: rgba(20, 17, 15, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #print-area, #print-area * {
+    visibility: visible;
+  }
+  #print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: white !important;
+  }
+  @page {
+    margin: 0;
   }
 }

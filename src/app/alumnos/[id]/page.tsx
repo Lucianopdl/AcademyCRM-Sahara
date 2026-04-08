@@ -109,6 +109,15 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
   const [activeTab, setActiveTab] = useState<'info' | 'financial' | 'attendance'>('financial');
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [attendanceDate, setAttendanceDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function getSession() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setUserId(user.id);
+    }
+    getSession();
+  }, []);
 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedFee, setSelectedFee] = useState<Fee | null>(null);
@@ -226,10 +235,26 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
   const handleMarkAttendance = async (classId: string, status: 'present' | 'absent' | 'late' | 'justified') => {
     setSaving(true);
     
-    // Upsert logic
-    const { error } = await supabase
-      .from('attendance')
-      .upsert({
+    try {
+      let currentUserId = userId;
+      if (!currentUserId) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          currentUserId = session.user.id;
+          setUserId(session.user.id);
+        } else {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error("Sesión no válida o expirada. Por favor, refrescá la página.");
+          currentUserId = user.id;
+          setUserId(user.id);
+        }
+      }
+
+      // Upsert logic
+      const { error } = await supabase
+        .from('attendance')
+        .upsert({
+          user_id: currentUserId,
         student_id: id,
         class_id: classId,
         date: attendanceDate,
@@ -238,13 +263,18 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
         onConflict: 'student_id, class_id, date'
       });
 
-    if (error) {
+      if (error) {
+        console.error(error);
+        alert("Error al registrar asistencia");
+      } else {
+        fetchAttendance(attendanceDate);
+      }
+    } catch (error: any) {
       console.error(error);
-      alert("Error al registrar asistencia");
-    } else {
-      fetchAttendance(attendanceDate);
+      alert(error.message || "Error al registrar asistencia");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   useEffect(() => {

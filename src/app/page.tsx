@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Sidebar } from "@/components/sidebar";
+import { DashboardShell } from "@/components/dashboard-shell";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { 
   Users, 
@@ -76,15 +76,14 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex bg-[#FDFCFB] h-screen text-[#2D241E] overflow-hidden font-sans">
-      <Sidebar />
-      <main className="flex-1 p-6 lg:p-8 flex flex-col h-full overflow-hidden">
+    <DashboardShell>
+      <div className="p-4 lg:p-8 flex flex-col h-full gap-6 lg:gap-8">
         
-        {/* Header Compacto */}
+        {/* Header Compacto (Desktop: Visible, Mobile: Oculto porque MobileHeader lo maneja) */}
         <motion.header 
           initial={{ y: -10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="flex items-center justify-between mb-6 shrink-0"
+          className="hidden lg:flex items-center justify-between mb-2 shrink-0"
         >
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -92,7 +91,7 @@ export default function Dashboard() {
                 <Sparkles className="w-2.5 h-2.5 inline mr-1" /> General
               </span>
             </div>
-            <h1 className="text-3xl font-serif font-bold tracking-tight">
+            <h1 className="text-3xl font-serif font-bold tracking-tight text-foreground">
               ¡Hola, <span className="text-[#E67E22]">{userFirstName}</span>!
             </h1>
           </div>
@@ -111,14 +110,22 @@ export default function Dashboard() {
           </div>
         </motion.header>
 
+        {/* Bienvenida Táctil (Móvil) */}
+        <div className="lg:hidden mb-2">
+           <h2 className="text-2xl font-serif font-bold text-foreground">
+             ¡Hola, <span className="text-[#E67E22] font-black">{userFirstName}</span>! 👋
+           </h2>
+           <p className="text-xs text-secondary/60 font-bold uppercase tracking-widest mt-1">Dashboard Principal</p>
+        </div>
+
         <motion.div 
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="flex-1 flex flex-col gap-6 overflow-hidden"
+          className="flex-1 flex flex-col gap-6"
         >
-          {/* Stats Row - Compacta */}
-          <section className="grid grid-cols-1 md:grid-cols-3 gap-6 shrink-0">
+          {/* Stats Row - Adaptable */}
+          <section className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 shrink-0">
             {[
               { label: "Estudiantes", value: stats.studentsCount, icon: Users, color: "bg-[#E67E22]", accent: "text-[#E67E22]" },
               { label: "Ingresos", value: `$${stats.paymentsTotal.toLocaleString()}`, icon: TrendingUp, color: "bg-[#27AE60]", accent: "text-[#27AE60]" },
@@ -128,68 +135,69 @@ export default function Dashboard() {
                 key={i} 
                 variants={itemVariants}
                 whileHover={{ y: -3 }}
-                className="bg-[#F5F1EE] border border-[#847365]/5 p-5 rounded-[24px] shadow-sm flex items-center gap-5 group"
+                className="bg-card border border-border/50 p-5 rounded-[28px] shadow-sm flex items-center gap-5 group active:scale-[0.98] transition-all"
               >
-                <div className={cn("p-3.5 rounded-xl shadow-md text-white transition-transform group-hover:scale-105", stat.color)}>
-                  <stat.icon className="w-5 h-5" />
+                <div className={cn("p-4 rounded-2xl shadow-md text-white transition-transform group-hover:scale-105", stat.color)}>
+                  <stat.icon className="w-6 h-6" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#847365]/60 mb-1">{stat.label}</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary/50 mb-1">{stat.label}</p>
                   <div className="flex items-baseline gap-2">
                     {loading ? (
                       <div className="h-6 w-12 bg-black/5 animate-pulse rounded" />
                     ) : (
-                      <h3 className="text-2xl font-serif font-bold tracking-tighter">{stat.value}</h3>
+                      <h3 className="text-3xl font-serif font-bold tracking-tighter text-foreground">{stat.value}</h3>
                     )}
                   </div>
                 </div>
-                <ArrowUpRight className="w-3.5 h-3.5 text-[#847365]/20 group-hover:text-primary transition-colors" />
               </motion.div>
             ))}
           </section>
 
-          {/* Body Content - Todo en una pantalla */}
-          <div className="flex-1 grid md:grid-cols-12 gap-6 overflow-hidden pb-4">
+          {/* Body Content */}
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 pb-20 lg:pb-0">
             
-            {/* Banner Principal - Ajustado al alto */}
+            {/* Banner Principal */}
             <motion.div 
                 variants={itemVariants}
-                className="md:col-span-8 relative bg-gradient-to-br from-[#D35400] to-[#E67E22] p-8 rounded-[32px] shadow-lg shadow-[#E67E22]/10 overflow-hidden flex flex-col justify-center min-h-[300px]"
+                className="lg:col-span-8 relative bg-gradient-to-br from-[#D35400] to-[#E67E22] p-8 lg:p-12 rounded-[40px] shadow-xl shadow-[#E67E22]/10 overflow-hidden flex flex-col justify-center min-h-[350px] lg:min-h-0"
             >
-                <School className="absolute bottom-[-15%] right-[-5%] w-48 h-48 opacity-20 rotate-12" />
+                <School className="absolute bottom-[-10%] right-[-5%] w-64 h-64 opacity-20 rotate-12" />
                 
                 <div className="relative z-10">
-                  <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full w-fit text-white text-[8px] font-bold uppercase tracking-widest mb-4 border border-white/20">
+                  <div className="bg-white/20 backdrop-blur-sm px-4 py-1.5 rounded-full w-fit text-white text-[9px] font-black uppercase tracking-[0.2em] mb-6 border border-white/20">
                     Sistemas Norte
                   </div>
-                  <h3 className="text-3xl md:text-4xl font-serif font-bold text-white mb-3 tracking-tight max-w-md leading-tight">
+                  <h3 className="text-4xl lg:text-5xl font-serif font-bold text-white mb-4 tracking-tight max-w-md leading-[1.1]">
                     Gestión Académica de Vanguardia.
                   </h3>
-                  <p className="text-white/80 text-sm max-w-sm font-medium leading-relaxed mb-8 opacity-90">
+                  <p className="text-white/80 text-base max-w-sm font-medium leading-relaxed mb-10 opacity-90">
                     Administra tus clases y cobros con la elegancia que tu academia merece.
                   </p>
                   <Button 
                     onClick={() => window.location.href='/clases'} 
-                    className="bg-white text-[#D35400] hover:bg-neutral-50 px-6 h-12 rounded-xl font-bold text-sm shadow-xl active:scale-95 transition-all"
+                    className="bg-white text-[#D35400] hover:bg-neutral-50 px-8 h-14 rounded-2xl font-black text-base shadow-2xl active:scale-95 transition-all w-full md:w-fit"
                   >
                     Ver Clases
-                    <ArrowUpRight className="w-4 h-4 ml-2" />
+                    <ArrowUpRight className="w-5 h-5 ml-2" />
                   </Button>
                 </div>
             </motion.div>
 
-            {/* Quick Actions Vertical */}
-            <div className="md:col-span-4 flex flex-col gap-6">
+            {/* Quick Actions */}
+            <div className="lg:col-span-4 flex flex-col gap-4 lg:gap-6">
                 <motion.div 
                   variants={itemVariants}
                   whileHover={{ x: 5 }}
                   onClick={() => window.location.href='/pagos'}
-                  className="flex-1 bg-[#2D241E] text-white p-6 rounded-[28px] flex flex-col justify-between cursor-pointer group shadow-lg shadow-black/10"
+                  className="flex-1 bg-[#2D241E] text-white p-7 rounded-[32px] flex flex-col justify-between cursor-pointer group shadow-lg shadow-black/10 active:scale-[0.98] transition-all min-h-[160px]"
                 >
-                  <DollarSign className="w-6 h-6 text-[#E67E22]" />
+                  <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-[#E67E22]">
+                    <DollarSign className="w-7 h-7" />
+                  </div>
                   <div>
-                    <h4 className="text-lg font-serif font-bold mb-1">Registrar Cobro</h4>
-                    <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest font-sans">Finanzas</p>
+                    <h4 className="text-xl font-serif font-bold mb-1">Registrar Cobro</h4>
+                    <p className="text-[10px] text-white/30 font-black uppercase tracking-widest font-sans">Administración de Pagos</p>
                   </div>
                 </motion.div>
 
@@ -197,26 +205,27 @@ export default function Dashboard() {
                   variants={itemVariants}
                   whileHover={{ x: 5 }}
                   onClick={() => window.location.href='/alumnos/nuevo'}
-                  className="flex-1 bg-[#F5F1EE] border border-[#847365]/10 p-6 rounded-[28px] flex flex-col justify-between cursor-pointer group shadow-sm hover:border-[#E67E22]/30 transition-all"
+                  className="flex-1 bg-card border border-border/50 p-7 rounded-[32px] flex flex-col justify-between cursor-pointer group shadow-sm hover:border-[#E67E22]/30 active:scale-[0.98] transition-all min-h-[160px]"
                 >
-                  <Plus className="w-6 h-6 text-[#E67E22]" />
+                  <div className="w-12 h-12 rounded-2xl bg-[#E67E22]/10 flex items-center justify-center text-[#E67E22]">
+                    <Plus className="w-7 h-7" />
+                  </div>
                   <div>
-                    <h4 className="text-lg font-serif font-bold text-[#2D241E] mb-1">Nuevo Alumno</h4>
-                    <p className="text-[9px] text-[#847365]/50 font-bold uppercase tracking-widest font-sans">Inscripción</p>
+                    <h4 className="text-xl font-serif font-bold text-foreground mb-1 text-[#2D241E]">Nuevo Alumno</h4>
+                    <p className="text-[10px] text-secondary/40 font-black uppercase tracking-widest font-sans">Inscripción rápida</p>
                   </div>
                 </motion.div>
             </div>
           </div>
         </motion.div>
 
-        {/* Footer Minimal - Sin scroll */}
-        <footer className="mt-auto py-4 text-center shrink-0 border-t border-[#847365]/5">
-            <p className="text-[9px] font-bold uppercase tracking-[0.4em] text-[#847365]/30">
+        {/* Footer Minimal */}
+        <footer className="mt-auto py-6 text-center shrink-0 border-t border-border/10 hidden lg:block">
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-secondary/30">
                © 2026 {academyInfo.name} • El arte de gestionar
             </p>
         </footer>
-
-      </main>
-    </div>
+      </div>
+    </DashboardShell>
   );
 }

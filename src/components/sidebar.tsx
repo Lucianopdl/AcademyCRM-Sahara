@@ -15,7 +15,8 @@ import {
   School,
   Moon,
   Sun,
-  ClipboardCheck
+  ClipboardCheck,
+  Wallet
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
@@ -27,6 +28,7 @@ const navItems = [
   { name: "Clases y Talleres", href: "/clases", icon: GraduationCap },
   { name: "Cuotas y Pagos", href: "/pagos", icon: CreditCard },
   { name: "Asistencias", href: "/asistencias", icon: ClipboardCheck },
+  { name: "Gastos y Finanzas", href: "/finanzas", icon: Wallet },
   { name: "Configuración", href: "/config", icon: Settings },
 ];
 
@@ -78,7 +80,7 @@ export function Sidebar() {
   }, []);
 
   return (
-    <aside className="w-72 bg-card border-r border-border h-screen flex flex-col sticky top-0 shadow-sm">
+    <aside className="hidden lg:flex w-72 bg-card border-r border-border h-screen flex-col sticky top-0 shadow-sm">
       <div className="p-8 pb-4">
         <div className="flex items-center gap-3 mb-8">
           <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary shadow-warm overflow-hidden">
