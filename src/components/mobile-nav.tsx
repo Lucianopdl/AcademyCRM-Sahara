@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { 
   Users, 
   LayoutDashboard, 
@@ -11,10 +11,14 @@ import {
   Menu,
   Settings,
   CreditCard,
-  GraduationCap
+  GraduationCap,
+  LogOut,
+  X,
+  Bell
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/lib/supabase";
 
 const mobileItems = [
   { name: "Inicio", href: "/", icon: LayoutDashboard },
@@ -23,14 +27,89 @@ const mobileItems = [
   { name: "Finanzas", href: "/finanzas", icon: Wallet },
 ];
 
+const extraItems = [
+  { name: "Clases y Talleres", href: "/clases", icon: GraduationCap },
+  { name: "Cuotas y Pagos", href: "/pagos", icon: CreditCard },
+  { name: "Notificaciones", href: "#", icon: Bell, disabled: true },
+  { name: "Configuración", href: "/config", icon: Settings },
+];
+
 export function MobileNav() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/login");
+  };
 
   return (
     <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-4 bg-transparent pointer-events-none">
+      <AnimatePresence>
+        {isMenuOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMenuOpen(false)}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto z-[-1]"
+            />
+            
+            {/* Menu Drawer */}
+            <motion.div
+              initial={{ y: "100%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "100%", opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="absolute bottom-24 left-4 right-4 bg-card glass border border-white/20 rounded-[32px] p-6 shadow-2xl pointer-events-auto"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-serif font-bold text-foreground">Menu Principal</h3>
+                <button 
+                  onClick={() => setIsMenuOpen(false)}
+                  className="p-2 hover:bg-primary/5 rounded-full transition-colors text-secondary"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-8">
+                {extraItems.map((item) => (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={() => !item.disabled && setIsMenuOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 p-4 rounded-2xl transition-all duration-200 border border-transparent",
+                      pathname === item.href 
+                        ? "bg-primary/10 text-primary border-primary/20" 
+                        : "bg-background/50 text-secondary hover:bg-primary/5"
+                    )}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    <span className="text-sm font-semibold">{item.name}</span>
+                  </Link>
+                ))}
+              </div>
+
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center gap-3 p-4 rounded-2xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all font-bold border border-red-500/20"
+              >
+                <LogOut className="w-5 h-5" />
+                Cerrar Sesión
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       <nav className="glass rounded-[32px] h-20 shadow-2xl flex items-center justify-around px-2 pointer-events-auto border-white/20">
         {mobileItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href && !isMenuOpen;
           return (
             <Link
               key={item.name}
@@ -69,11 +148,25 @@ export function MobileNav() {
         })}
         
         {/* Botón de Menú/Más */}
-        <button className="relative flex flex-col items-center justify-center w-16 h-16 group tap-highlight-none text-secondary">
-          <div className="p-2 rounded-2xl group-active:bg-primary/5 transition-colors">
+        <button 
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className={cn(
+            "relative flex flex-col items-center justify-center w-16 h-16 group tap-highlight-none transition-colors duration-300",
+            isMenuOpen ? "text-primary" : "text-secondary"
+          )}
+        >
+          <div className={cn(
+            "p-2 rounded-2xl transition-colors duration-300",
+            isMenuOpen ? "bg-primary/10" : "group-active:bg-primary/5"
+          )}>
             <Menu className="w-6 h-6" />
           </div>
-          <span className="text-[10px] font-bold mt-1 opacity-60">Más</span>
+          <span className={cn(
+            "text-[10px] font-bold mt-1 transition-opacity",
+            isMenuOpen ? "opacity-100" : "opacity-60"
+          )}>
+            Más
+          </span>
         </button>
       </nav>
       {/* Safe Area Spacer for iOS */}
@@ -81,3 +174,4 @@ export function MobileNav() {
     </div>
   );
 }
+
