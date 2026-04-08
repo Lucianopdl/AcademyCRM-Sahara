@@ -28,6 +28,7 @@ export default function LoginPage() {
     setError(null);
 
     try {
+      console.log("Iniciando proceso de login para:", email);
       const { data, error: authError } =
         await supabase.auth.signInWithPassword({
           email,
@@ -35,17 +36,24 @@ export default function LoginPage() {
         });
 
       if (authError) {
+        console.error("Error de Supabase Auth:", authError);
         if (authError.message.includes("Invalid login credentials")) {
           throw new Error("Usuario o contraseña incorrectos.");
         }
         throw authError;
       }
 
-      // Éxito - Redirigimos a la página principal
-      router.push("/");
+      console.log("Login exitoso, usuario:", data.user?.id);
+
+      // Éxito - Redirigimos
+      if (data.user) {
+        // Usamos window.location.href para forzar una carga completa y que el middleware
+        // detecte las nuevas cookies de sesión correctamente.
+        window.location.href = "/";
+      }
     } catch (err: any) {
-      console.error("LOGIN ERROR:", err);
-      setError(err.message || "Error al intentar iniciar sesión.");
+      console.error("Error capturado en handleLogin:", err);
+      setError(err.message || "Ocurrió un error inesperado al intentar ingresar.");
     } finally {
       setLoading(false);
     }

@@ -388,6 +388,19 @@ export default function AlumnosPage() {
     if (!error) fetchInitialData();
   };
 
+  const handleDeleteStudent = async (studentId: string) => {
+    setIsBulkLoading(true);
+    const { error } = await supabase.from('students').delete().eq('id', studentId);
+    
+    if (!error) {
+      fetchInitialData();
+      showAlert("Eliminado", "El alumno y todos sus registros asociados han sido eliminados permanentemente.", "success");
+    } else {
+      showAlert("Error", "No se pudo eliminar: " + error.message, "error");
+    }
+    setIsBulkLoading(false);
+  };
+
   const handleBulkGenerateFees = async () => {
     const activeStudents = students.filter(s => s.status === 'active');
     const currentMonth = new Date().getMonth() + 1;
@@ -605,6 +618,32 @@ export default function AlumnosPage() {
           </div>
         </header>
 
+        {/* Tab Switcher - Sahara Style */}
+        <div className="flex items-center gap-1 bg-[#F5F1EE] p-1.5 rounded-[24px] w-fit mb-8 border border-[#847365]/5 shadow-inner">
+          <button 
+            onClick={() => setActiveTab('active')}
+            className={cn(
+              "px-8 py-3 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] transition-all",
+              activeTab === 'active' 
+                ? "bg-white text-primary shadow-sm ring-1 ring-[#847365]/10" 
+                : "text-[#847365]/50 hover:text-[#847365]"
+            )}
+          >
+            Activos
+          </button>
+          <button 
+            onClick={() => setActiveTab('inactive')}
+            className={cn(
+              "px-8 py-3 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] transition-all",
+              activeTab === 'inactive' 
+                ? "bg-white text-primary shadow-sm ring-1 ring-[#847365]/10" 
+                : "text-[#847365]/50 hover:text-[#847365]"
+            )}
+          >
+            Archivados
+          </button>
+        </div>
+
         <AnimatePresence>
           {showPaymentPanel && selectedStudent && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2D241E]/40 backdrop-blur-sm">
@@ -813,22 +852,61 @@ export default function AlumnosPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-4 border-t border-[#847365]/5">
-                    <button 
-                      onClick={() => toggleSelectOne(s.id)}
-                      className="flex items-center gap-2"
-                    >
-                      <div className={cn(
-                        "w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all",
-                        selectedIds.includes(s.id) ? "bg-[#111] border-[#111]" : "border-[#847365]/20 bg-white"
-                      )}>
-                        {selectedIds.includes(s.id) && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
-                      </div>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-[#847365]">Seleccionar</span>
-                    </button>
+                  <div className="flex items-center justify-between pt-4 border-t border-[#847365]/5 gap-2">
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => toggleSelectOne(s.id)}
+                        className="flex items-center gap-2"
+                      >
+                        <div className={cn(
+                          "w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all",
+                          selectedIds.includes(s.id) ? "bg-[#111] border-[#111]" : "border-[#847365]/20 bg-white"
+                        )}>
+                          {selectedIds.includes(s.id) && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
+                        </div>
+                      </button>
+
+                      <button 
+                        onClick={() => openEdit(s)}
+                        className="w-9 h-9 rounded-xl border border-[#847365]/10 flex items-center justify-center text-[#111] active:scale-90"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button 
+                        onClick={() => {
+                            showConfirm(
+                                s.status === 'active' ? "¿Archivar Legajo?" : "¿Restaurar Legajo?",
+                                s.status === 'active' ? `¿Estás seguro de archivar a ${s.full_name}?` : `¿Deseas activar nuevamente a ${s.full_name}?`,
+                                () => handleStatusChange(s.id, s.status === 'active' ? 'inactive' : 'active')
+                            );
+                        }} 
+                        className={cn(
+                          "w-9 h-9 rounded-xl border border-[#847365]/10 flex items-center justify-center transition-all active:scale-90",
+                          s.status === 'active' ? "text-[#847365]/40" : "text-green-600 border-green-100"
+                        )}
+                      >
+                         {s.status === 'active' ? <Archive className="w-3.5 h-3.5" /> : <ArchiveRestore className="w-3.5 h-3.5" />}
+                      </button>
+
+                      {s.status === 'inactive' && (
+                        <button 
+                          onClick={() => {
+                              showConfirm(
+                                  "¿Eliminar Permanentemente?",
+                                  `Esta acción ELIMINARÁ DEFINITIVAMENTE a ${s.full_name}. No se puede deshacer.`,
+                                  () => handleDeleteStudent(s.id)
+                              );
+                          }} 
+                          className="w-9 h-9 rounded-xl border border-red-100 flex items-center justify-center text-red-400 active:scale-90"
+                        >
+                           <XCircle className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                     
-                    <Link href={`/alumnos/${s.id}`} className="text-[10px] font-black uppercase tracking-widest text-[#E67E22] flex items-center gap-1">
-                      Ver Ficha <Eye className="w-3 h-3" />
+                    <Link href={`/alumnos/${s.id}`} className="text-[10px] font-black uppercase tracking-widest text-[#E67E22] flex items-center gap-1 bg-orange-50 px-3 py-2 rounded-xl">
+                      Perfil <Eye className="w-3 h-3" />
                     </Link>
                   </div>
                 </motion.div>
@@ -942,12 +1020,28 @@ export default function AlumnosPage() {
                             }} 
                             className={cn(
                               "w-11 h-11 rounded-2xl border border-[#847365]/10 flex items-center justify-center transition-all active:scale-90",
-                              s.status === 'active' ? "text-[#E74C3C] hover:bg-[#E74C3C] hover:text-white" : "text-green-600 hover:bg-green-600 hover:text-white"
+                              s.status === 'active' ? "text-[#847365]/40 hover:bg-[#2D241E] hover:text-white" : "text-green-600 hover:bg-green-600 hover:text-white"
                             )}
                             title={s.status === 'active' ? "Archivar Alumno" : "Restaurar Alumno"}
                           >
                              {s.status === 'active' ? <Archive className="w-4 h-4" /> : <ArchiveRestore className="w-4 h-4" />}
                           </button>
+
+                          {s.status === 'inactive' && (
+                            <button 
+                              onClick={() => {
+                                  showConfirm(
+                                      "¿Eliminar Permanentemente?",
+                                      `Esta acción ELIMINARÁ DEFINITIVAMENTE a ${s.full_name} del sistema, incluyendo sus pagos, asistencias e inscripción. Esta acción no se puede deshacer.`,
+                                      () => handleDeleteStudent(s.id)
+                                  );
+                              }} 
+                              className="w-11 h-11 rounded-2xl border border-red-100 flex items-center justify-center text-red-400 hover:bg-red-500 hover:text-white transition-all active:scale-90"
+                              title="Eliminar del Sistema"
+                            >
+                               <XCircle className="w-4 h-4" />
+                            </button>
+                          )}
                        </div>
                     </td>
                   </tr>

@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { Sidebar } from "@/components/sidebar";
+import React, { useEffect, useState, useRef } from "react";
+import { DashboardShell } from "@/components/dashboard-shell";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   CreditCard, 
   Search, 
-  Filter, 
   TrendingUp, 
   History, 
   Loader2,
@@ -17,8 +16,17 @@ import {
   Users,
   Wallet,
   Info,
-  ChevronRight
+  ChevronRight,
+  Receipt,
+  PieChart,
+  FileText,
+  MousePointer2,
+  PlusCircle,
+  TrendingDown,
+  Printer
 } from "lucide-react";
+import html2canvas from "html2canvas-pro";
+import { jsPDF } from "jspdf";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -61,9 +69,12 @@ export default function PagosPage() {
   
   // Modal State
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [studentSearch, setStudentSearch] = useState("");
   const [saving, setSaving] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
   
   const [paymentForm, setPaymentForm] = useState({
     amount: "",
@@ -73,10 +84,16 @@ export default function PagosPage() {
     notes: ""
   });
 
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
+
   const fetchData = async () => {
     setLoading(true);
     
-    // Fetch payments
+    // Calculate month range for current selection
+    const start = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1).toISOString();
+    const end = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0, 23, 59, 59).toISOString();
+
+    // Fetch payments for selected month
     const { data: payData } = await supabase
       .from('payments')
       .select(`
@@ -85,17 +102,13 @@ export default function PagosPage() {
           full_name
         )
       `)
+      .gte('payment_date', start)
+      .lte('payment_date', end)
       .order('payment_date', { ascending: false });
 
     if (payData) {
       setPayments(payData as unknown as PaymentTransaction[]);
-      
-      const now = new Date();
-      const currentMonth = payData.filter(p => {
-        const d = new Date(p.payment_date);
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      });
-      const total = currentMonth.reduce((acc, curr) => acc + Number(curr.amount), 0);
+      const total = payData.reduce((acc, curr) => acc + Number(curr.amount), 0);
       setMonthlyTotal(total);
     }
 
@@ -111,7 +124,7 @@ export default function PagosPage() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [selectedMonth]);
 
   const handleStudentSelect = (student: Student) => {
     setSelectedStudentId(student.id);
@@ -140,16 +153,24 @@ export default function PagosPage() {
     if (!selectedStudentId || !paymentForm.amount) return;
     
     setSaving(true);
+    const amount = parseFloat(paymentForm.amount);
+    if (isNaN(amount) || amount <= 0) {
+      alert("Por favor, ingresa un monto válido mayor a cero.");
+      setSaving(false);
+      return;
+    }
+
     const { error } = await supabase
       .from('payments')
       .insert([{
         student_id: selectedStudentId,
-        amount: parseFloat(paymentForm.amount),
+        amount: amount,
         payment_method: paymentForm.method,
         period_month: paymentForm.month,
         period_year: paymentForm.year,
         notes: paymentForm.notes || null,
-        payment_date: new Date().toISOString()
+        payment_date: new Date().toISOString(),
+        status: 'completed'
       }]);
     
     if (!error) {
@@ -167,6 +188,39 @@ export default function PagosPage() {
       alert("Error: " + error.message);
     }
     setSaving(false);
+  };
+
+  const generateReportPdf = async () => {
+    if (!reportRef.current) return;
+    
+    setGeneratingPdf(true);
+    try {
+      const element = reportRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        logging: false,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+      
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Informe_Pagos_${months[selectedMonth.getMonth()]}_${selectedMonth.getFullYear()}.pdf`);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+    } finally {
+      setGeneratingPdf(false);
+    }
   };
 
   const exportToCSV = () => {
@@ -199,180 +253,219 @@ export default function PagosPage() {
 
   const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-  return (
-    <div className="flex bg-[#FDFCFB] min-h-screen text-[#2D241E]">
-      <Sidebar />
-      <main className="flex-1 p-8 lg:p-12 overflow-y-auto">
-        <header className="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-6">
-          <div>
-            <h1 className="text-4xl font-serif font-bold text-[#2D241E] mb-2 tracking-tight">Finanzas y Cobros</h1>
-            <p className="text-[#847365] font-medium opacity-80">Control integral de ingresos y auditoría de transacciones.</p>
-          </div>
-          <div className="flex gap-4">
-            <Button onClick={exportToCSV} variant="outline" className="h-12 px-6 rounded-2xl border-[#847365]/20 text-[#847365] hover:bg-white gap-2 font-bold shadow-sm">
-              <Download className="w-4 h-4" /> Exportar CSV
-            </Button>
-            <Button onClick={() => setShowPaymentModal(true)} className="h-12 px-8 rounded-2xl bg-[#E67E22] hover:bg-[#D35400] text-white gap-2 font-bold shadow-lg shadow-[#E67E22]/20 transition-all active:scale-95">
-              <CreditCard className="w-4 h-4" /> Registrar Cobro
-            </Button>
-          </div>
-        </header>
+  const currentMonthPayments = payments;
 
-        {/* Stats Grid */}
-        <div className="grid md:grid-cols-2 gap-8 mb-12">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-[#E67E22] p-10 rounded-[40px] text-white shadow-2xl relative overflow-hidden"
-          >
-            <div className="relative z-10">
-              <div className="flex justify-between items-start mb-6">
-                <div className="p-4 bg-white/20 rounded-2xl backdrop-blur-md">
-                  <TrendingUp className="w-7 h-7" />
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60">Recaudación Mensual</span>
-              </div>
-              <h2 className="text-6xl font-serif font-bold mb-4 tracking-tighter">${monthlyTotal.toLocaleString('es-AR')}</h2>
-              <div className="flex items-center gap-2 opacity-80 text-sm font-bold bg-black/5 w-fit px-4 py-2 rounded-full">
-                <Calendar className="w-4 h-4" /> Periodo: {months[new Date().getMonth()]} {new Date().getFullYear()}
-              </div>
+  const stats = {
+    cash: payments.filter(p => p.payment_method === 'cash').reduce((acc, p) => acc + p.amount, 0),
+    transfer: payments.filter(p => p.payment_method === 'transfer').reduce((acc, p) => acc + p.amount, 0),
+    card: payments.filter(p => p.payment_method === 'card').reduce((acc, p) => acc + p.amount, 0),
+  };
+
+  return (
+    <DashboardShell>
+      <div className="space-y-8 pb-20">
+        {/* Header Section - Sahara Style */}
+        <section className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-serif font-bold tracking-tight">Pagos y Cobros</h1>
+            <p className="text-[#847365] font-medium opacity-80 mt-1">Gestión de recaudación y auditoría de alumnos.</p>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="flex items-center justify-between bg-white border border-[#E8E2DC] rounded-2xl px-4 py-2 shadow-sm">
+              <button 
+                onClick={() => {
+                  const d = new Date(selectedMonth);
+                  d.setMonth(d.getMonth() - 1);
+                  setSelectedMonth(d);
+                }} 
+                className="p-2 hover:text-primary transition-colors"
+              >
+                <ChevronRight className="w-5 h-5 rotate-180" />
+              </button>
+              <span className="mx-4 font-black text-[10px] uppercase tracking-widest min-w-[140px] text-center">
+                {months[selectedMonth.getMonth()]} {selectedMonth.getFullYear()}
+              </span>
+              <button 
+                onClick={() => {
+                  const d = new Date(selectedMonth);
+                  d.setMonth(d.getMonth() + 1);
+                  setSelectedMonth(d);
+                }} 
+                className="p-2 hover:text-primary transition-colors"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
             </div>
-            <div className="absolute top-0 right-0 p-10 opacity-10">
-              <DollarSign className="w-40 h-40 translate-x-10 -translate-y-10" />
+            
+            <Button 
+              onClick={() => setShowReportModal(true)} 
+              variant="outline"
+              className="border-[#E8E2DC] hover:bg-[#F5F1EE] text-[#847365] h-12 px-6 rounded-2xl gap-2 font-bold transition-all"
+            >
+              <FileText className="w-4 h-4" /> Informe
+            </Button>
+
+            <Button 
+              onClick={() => setShowPaymentModal(true)} 
+              className="bg-primary hover:bg-primary/90 text-white h-12 px-8 rounded-2xl gap-2 shadow-lg shadow-primary/20 font-bold"
+            >
+              <PlusCircle className="w-4 h-4" /> Registrar Cobro
+            </Button>
+          </div>
+        </section>
+
+        {/* Stats Grid - Sahara Style */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            className="bg-[#2D241E] p-8 rounded-[40px] text-white shadow-2xl relative overflow-hidden group border border-white/5"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent opacity-50 group-hover:opacity-70 transition-opacity" />
+            <div className="relative z-10">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/10">
+                  <TrendingUp className="w-6 h-6 text-primary" />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50">Recaudación Total</span>
+              </div>
+              <h2 className="text-4xl font-black mb-1">${monthlyTotal.toLocaleString('es-AR')}</h2>
+              <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Balance del periodo seleccionado</p>
+            </div>
+            <div className="absolute top-0 right-0 p-8 opacity-5">
+              <DollarSign className="w-32 h-32 translate-x-10 -translate-y-10 group-hover:scale-110 transition-transform duration-700" />
             </div>
           </motion.div>
           
           <motion.div 
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="bg-white p-10 rounded-[40px] border border-[#847365]/10 shadow-xl flex flex-col justify-center relative overflow-hidden group"
+            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            className="bg-white p-8 rounded-[40px] border border-[#E8E2DC] shadow-xl shadow-black/5 relative overflow-hidden group hover:border-primary/20 transition-all"
           >
-            <div className="flex items-center gap-4 mb-4">
-              <div className="p-3 bg-[#847365]/5 text-[#847365] rounded-2xl transition-colors group-hover:bg-[#E67E22]/10 group-hover:text-[#E67E22]">
-                <History className="w-6 h-6" />
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 bg-[#F5F1EE] rounded-2xl flex items-center justify-center group-hover:bg-primary/5 transition-colors">
+                <Users className="w-6 h-6 text-[#847365] group-hover:text-primary transition-colors" />
               </div>
-              <h3 className="font-bold text-[#847365]/40 uppercase tracking-[0.2em] text-[10px]">Transacciones del mes</h3>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#847365]/60">Operaciones</span>
             </div>
-            <p className="text-4xl font-serif font-bold text-[#2D241E] mb-2 px-1">
-              {payments.filter(p => new Date(p.payment_date).getMonth() === new Date().getMonth()).length} operaciones
-            </p>
-            <p className="text-sm text-[#847365] font-medium opacity-80 px-1">Registradas y validadas en el libro diario.</p>
+            <h2 className="text-4xl font-black text-[#2D241E] mb-1">{payments.length}</h2>
+            <p className="text-[10px] font-bold text-[#847365]/40 uppercase tracking-widest">Cobros registrados</p>
+          </motion.div>
+[diff_block_start]
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+            className="bg-white p-8 rounded-[40px] border border-[#E8E2DC] shadow-xl shadow-black/5 relative overflow-hidden group hover:border-primary/20 transition-all"
+          >
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 bg-[#F5F1EE] rounded-2xl flex items-center justify-center group-hover:bg-primary/5 transition-colors">
+                <Wallet className="w-6 h-6 text-[#847365] group-hover:text-primary transition-colors" />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#847365]/60">Promedio x Alumno</span>
+            </div>
+            <h2 className="text-4xl font-black text-[#2D241E] mb-1">
+              ${payments.length > 0 ? (monthlyTotal / payments.length).toLocaleString('es-AR', { maximumFractionDigits: 0 }) : 0}
+            </h2>
+            <p className="text-[10px] font-bold text-[#847365]/40 uppercase tracking-widest">Ticket promedio mensual</p>
           </motion.div>
         </div>
 
-        {/* Payments Table */}
-        <div className="bg-white rounded-[48px] border border-[#847365]/5 shadow-sm overflow-hidden pb-10">
-          <div className="p-10 border-b border-[#847365]/5 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-               <div className="w-1.5 h-8 bg-[#E67E22] rounded-full" />
-               <h3 className="text-2xl font-serif font-bold text-[#2D241E]">Últimos Movimientos</h3>
-            </div>
-            <div className="relative max-w-xs w-full">
-               <Search className="w-4 h-4 text-[#847365]/40 absolute left-4 top-1/2 -translate-y-1/2" />
-               <input 
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Buscar por alumno..." 
-                  className="w-full bg-[#F5F1EE]/50 border-none rounded-2xl pl-12 pr-6 py-3.5 text-sm focus:ring-2 focus:ring-[#E67E22]/20 font-medium transition-all"
-               />
+        {/* Search & List Container */}
+        <div className="space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-2">
+            <h3 className="text-xl font-serif font-bold flex items-center gap-3">
+              <History className="w-5 h-5 text-primary" /> Historial de Movimientos
+            </h3>
+            
+            <div className="relative w-full md:w-80 group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#847365]/40 group-focus-within:text-primary transition-colors" />
+              <input 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar por alumno..."
+                className="w-full bg-white border border-[#E8E2DC] rounded-2xl pl-12 pr-6 py-3.5 text-sm font-medium focus:ring-4 focus:ring-primary/5 outline-none transition-all shadow-sm"
+              />
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="text-[10px] font-black uppercase tracking-[0.2em] text-[#847365]/40 px-10">
-                  <th className="pl-14 py-6">Alumno</th>
-                  <th className="px-8 py-6 text-right">Monto</th>
-                  <th className="px-8 py-6">Fecha</th>
-                  <th className="px-8 py-6">Periodo</th>
-                  <th className="pr-14 py-6">Método</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#847365]/5">
-                {loading ? (
-                  <tr>
-                    <td colSpan={5} className="py-24 text-center">
-                      <div className="flex flex-col items-center gap-4">
-                        <Loader2 className="w-10 h-10 animate-spin text-[#E67E22]" />
-                        <span className="text-sm font-bold text-[#847365]/40 uppercase tracking-widest italic">Consolidando datos financieros...</span>
+          <div className="space-y-3">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[40px] border border-[#847365]/5">
+                <Loader2 className="w-8 h-8 animate-spin text-primary/40 mb-4" />
+                <p className="text-xs font-black uppercase tracking-widest text-[#847365]/40">Consolidando transacciones...</p>
+              </div>
+            ) : filteredPayments.length === 0 ? (
+              <div className="text-center py-24 bg-[#F5F1EE]/30 rounded-[40px] border border-dashed border-[#847365]/10 px-6">
+                <p className="font-serif italic text-2xl text-[#847365]/40 mb-2">Sin movimientos</p>
+                <p className="text-xs font-black uppercase tracking-widest text-[#847365]/30">No se encontraron pagos para este periodo.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3">
+                {filteredPayments.map((payment) => (
+                  <motion.div 
+                    key={payment.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="group bg-white border border-[#E8E2DC] rounded-[24px] md:rounded-[32px] p-5 md:p-6 hover:border-primary/20 transition-all shadow-sm flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 md:w-14 md:h-14 bg-[#F5F1EE] rounded-2xl flex items-center justify-center shrink-0 group-hover:bg-primary/5 transition-colors">
+                        <span className="font-serif font-bold text-lg text-[#847365] group-hover:text-primary capitalize">{payment.students?.full_name.charAt(0)}</span>
                       </div>
-                    </td>
-                  </tr>
-                ) : filteredPayments.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-24 text-center text-[#847365]/40 italic font-serif text-xl">
-                      No hay transacciones que coincidan con la búsqueda.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredPayments.map((payment) => (
-                    <tr key={payment.id} className="group hover:bg-[#F5F1EE]/30 transition-all">
-                      <td className="pl-14 py-8">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-full bg-[#847365]/5 flex items-center justify-center font-serif font-bold text-[#847365]">
-                            {payment.students?.full_name.charAt(0)}
-                          </div>
-                          <span className="font-serif font-bold text-lg text-[#2D241E] group-hover:text-[#E67E22] transition-colors">
-                            {payment.students?.full_name}
-                          </span>
+                      <div className="min-w-0">
+                        <h4 className="font-serif font-bold text-base md:text-lg text-[#2D241E] truncate">{payment.students?.full_name}</h4>
+                        <div className="flex items-center gap-2 text-[9px] md:text-[10px] font-black uppercase tracking-widest text-[#847365]/60">
+                          <span className="shrink-0">{new Date(payment.payment_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}</span>
+                          <span className="w-1.5 h-1.5 bg-[#E8E2DC] rounded-full shrink-0" />
+                          <span className="bg-[#F5F1EE] px-2 py-0.5 rounded text-[8px]">{payment.payment_method === 'cash' ? 'Efectivo' : payment.payment_method === 'transfer' ? 'Transf.' : 'Tarjeta'}</span>
                         </div>
-                      </td>
-                      <td className="px-8 py-8 text-right font-serif font-bold text-xl text-[#2D241E]">
-                        ${payment.amount.toLocaleString('es-AR')}
-                      </td>
-                      <td className="px-8 py-8 text-sm text-[#847365] font-bold">
-                        {new Date(payment.payment_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
-                      </td>
-                      <td className="px-8 py-8">
-                        <span className="text-[10px] font-black uppercase tracking-widest bg-[#F5F1EE] px-3 py-1.5 rounded-lg text-[#847365]">
-                          Mes {payment.period_month} / {payment.period_year}
-                        </span>
-                      </td>
-                      <td className="pr-14 py-8">
-                        <div className="flex items-center gap-2">
-                          <div className={cn(
-                            "w-2 h-2 rounded-full",
-                            payment.payment_method === 'cash' ? 'bg-green-400' : 'bg-[#E67E22]'
-                          )} />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-[#847365]/60">
-                             {payment.payment_method === 'cash' ? 'Efectivo' : 
-                              payment.payment_method === 'transfer' ? 'Transferencia' : 
-                              payment.payment_method === 'card' ? 'Tarjeta' : 'Otro'}
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                      </div>
+                    </div>
+
+                    <div className="text-right flex items-center gap-4">
+                      <div className="hidden md:block">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-[#847365]/40 mb-1">Periodo</p>
+                        <p className="text-[10px] font-bold text-[#847365]">Mes {payment.period_month}/{payment.period_year}</p>
+                      </div>
+                      <div className="bg-[#F5F1EE]/50 px-4 py-2 md:px-6 md:py-3 rounded-2xl group-hover:bg-primary/5 transition-colors">
+                        <p className="font-black text-lg md:text-xl text-primary">${payment.amount.toLocaleString('es-AR')}</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Global Payment Modal */}
-        <AnimatePresence>
+        {/* Global Payment Modal - Improved Responsiveness */}
+        <AnimatePresence mode="wait">
           {showPaymentModal && (
             <motion.div 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-[#2D241E]/40 backdrop-blur-md"
+              className="fixed inset-0 z-50 flex items-center justify-center lg:p-6 bg-background/80 backdrop-blur-md"
             >
               <motion.div 
-                initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-                className="bg-[#F5F1EE] w-full max-w-4xl rounded-[48px] shadow-2xl overflow-hidden flex flex-col md:flex-row h-[80vh] md:h-auto"
+                initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
+                className="bg-card w-full max-w-4xl h-full lg:h-auto lg:max-h-[90vh] lg:rounded-[48px] shadow-2xl overflow-hidden flex flex-col md:flex-row shadow-black/20 lg:border lg:border-border"
               >
-                {/* Left: Selection */}
-                <div className="w-full md:w-[40%] bg-white p-10 border-r border-[#847365]/5 overflow-y-auto">
-                    <div className="mb-8">
+                {/* Left: Selection - Scrollable column */}
+                <div className="w-full md:w-[40%] bg-background p-6 lg:p-10 border-r border-border/50 overflow-y-auto max-h-[40vh] md:max-h-none">
+                    <div className="mb-8 hidden md:block">
                       <h3 className="text-2xl font-serif font-bold mb-1">Seleccionar Alumno</h3>
-                      <p className="text-xs text-[#847365] font-bold uppercase tracking-widest opacity-60">Paso 1: Quién realiza el pago</p>
+                      <p className="text-[10px] text-secondary/40 font-bold uppercase tracking-widest">Paso 1: Quién realiza el pago</p>
+                    </div>
+
+                    <div className="flex items-center justify-between md:hidden mb-6">
+                        <h3 className="text-xl font-serif font-bold">Alumno</h3>
+                        <button onClick={() => setShowPaymentModal(false)} className="p-2 bg-secondary/5 rounded-full"><XCircle className="w-5 h-5 text-secondary/40" /></button>
                     </div>
 
                     <div className="relative mb-6">
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#847365]/40" />
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary/40" />
                       <input 
                         value={studentSearch}
                         onChange={(e) => setStudentSearch(e.target.value)}
                         placeholder="Buscar por nombre..."
-                        className="w-full bg-[#F5F1EE] border-none rounded-2xl pl-12 pr-6 py-4 text-sm font-medium focus:ring-2 focus:ring-[#E67E22]/20"
+                        className="w-full bg-card border border-border/50 rounded-2xl pl-12 pr-6 py-4 text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none shadow-sm"
                       />
                     </div>
 
@@ -385,84 +478,84 @@ export default function PagosPage() {
                             key={student.id}
                             onClick={() => handleStudentSelect(student)}
                             className={cn(
-                              "w-full text-left p-5 rounded-[24px] flex items-center justify-between group transition-all",
+                              "w-full text-left p-4 lg:p-5 rounded-2xl lg:rounded-[24px] flex items-center justify-between group transition-all border",
                               selectedStudentId === student.id 
-                                ? "bg-[#E67E22] text-white shadow-xl shadow-[#E67E22]/20" 
-                                : "bg-[#F5F1EE]/50 hover:bg-[#F5F1EE] text-[#2D241E]"
+                                ? "bg-primary text-white border-primary shadow-lg shadow-primary/20" 
+                                : "bg-card border-border/50 text-foreground hover:bg-primary/5 hover:border-primary/20"
                             )}
                           >
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-3 lg:gap-4">
                               <div className={cn(
-                                "w-10 h-10 rounded-xl flex items-center justify-center font-serif font-bold",
-                                selectedStudentId === student.id ? "bg-white/20" : "bg-white shadow-sm text-[#847365]"
+                                "w-10 h-10 rounded-xl flex items-center justify-center font-serif font-bold shadow-sm transition-colors",
+                                selectedStudentId === student.id ? "bg-white/20 text-white" : "bg-background text-secondary border border-border"
                               )}>
                                 {student.full_name.charAt(0)}
                               </div>
-                              <div>
-                                <p className="font-bold text-sm">{student.full_name}</p>
+                              <div className="min-w-0">
+                                <p className="font-bold text-sm truncate">{student.full_name}</p>
                                 <p className={cn(
-                                  "text-[10px] font-black uppercase tracking-widest",
-                                  selectedStudentId === student.id ? "text-white/60" : "text-[#847365]/40"
+                                  "text-[10px] font-black uppercase tracking-widest truncate",
+                                  selectedStudentId === student.id ? "text-white/60" : "text-secondary/40"
                                 )}>
                                   {categories.find(c => c.id === student.category_id)?.name || 'Sin Categoría'}
                                 </p>
                               </div>
                             </div>
-                            <ChevronRight className={cn("w-4 h-4 opacity-0 transition-all", selectedStudentId === student.id ? "opacity-100 translate-x-1" : "group-hover:opacity-40 translate-x-1")} />
+                            <ChevronRight className={cn("w-4 h-4 opacity-0 transition-all hidden sm:block", selectedStudentId === student.id ? "opacity-100 translate-x-1" : "group-hover:opacity-40 translate-x-1")} />
                           </button>
                         ))
                       }
                       {students.filter(s => s.full_name.toLowerCase().includes(studentSearch.toLowerCase())).length === 0 && (
-                        <p className="text-center py-10 text-[#847365]/40 italic text-sm">No se encontraron alumnos.</p>
+                        <p className="text-center py-10 text-secondary/40 italic text-sm">No se encontraron alumnos.</p>
                       )}
                     </div>
                 </div>
 
-                {/* Right: Form */}
-                <div className="flex-1 p-10 md:p-14 overflow-y-auto bg-warm-light relative">
-                  <header className="flex items-center justify-between mb-10">
+                {/* Right: Form - Main interactive part */}
+                <div className="flex-1 p-6 lg:p-14 overflow-y-auto bg-card relative rounded-t-[32px] md:rounded-none shadow-[0_-8px_30px_rgba(0,0,0,0.05)] md:shadow-none">
+                  <header className="flex items-center justify-between mb-8 lg:mb-10">
                     <div>
-                      <h3 className="text-3xl font-serif font-bold">Detalles del Cobro</h3>
-                      <p className="text-xs text-[#847365] font-bold uppercase tracking-widest opacity-60">Paso 2: Completar transacción</p>
+                      <h3 className="text-2xl lg:text-3xl font-serif font-bold">Detalles del Cobro</h3>
+                      <p className="text-[10px] text-secondary/40 font-bold uppercase tracking-widest hidden md:block">Paso 2: Completar transacción</p>
                     </div>
-                    <button onClick={() => setShowPaymentModal(false)} className="w-12 h-12 rounded-full hover:bg-white flex items-center justify-center transition-all group">
-                       <XCircle className="w-8 h-8 text-[#847365]/20 group-hover:text-[#E74C3C]/60" />
+                    <button onClick={() => setShowPaymentModal(false)} className="w-10 h-10 lg:w-12 lg:h-12 rounded-full hover:bg-white flex items-center justify-center transition-all group hidden md:flex">
+                       <XCircle className="w-6 h-6 lg:w-8 lg:h-8 text-secondary/20 group-hover:text-red-500/60" />
                     </button>
                   </header>
 
-                  <form onSubmit={handleSavePayment} className="grid grid-cols-2 gap-8">
-                    <div className="col-span-2 space-y-3">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[#847365]/60 ml-2">Monto a Percibir</label>
+                  <form onSubmit={handleSavePayment} className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-8">
+                    <div className="sm:col-span-2 space-y-2 lg:space-y-3">
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary/40 ml-2">Monto a Percibir</label>
                       <div className="relative">
-                        <span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-serif font-bold text-[#E67E22]">$</span>
+                        <span className="absolute left-6 lg:left-8 top-1/2 -translate-y-1/2 text-xl lg:text-2xl font-serif font-bold text-primary">$</span>
                         <input 
                           required
                           type="number"
                           value={paymentForm.amount}
                           onChange={(e) => setPaymentForm({...paymentForm, amount: e.target.value})}
-                          className="w-full h-20 bg-white border-none rounded-[32px] pl-12 pr-8 text-4xl font-serif font-black focus:ring-4 focus:ring-[#E67E22]/10 transition-all shadow-inner"
+                          className="w-full h-16 lg:h-20 bg-background border border-border/50 rounded-2xl lg:rounded-[32px] pl-10 lg:pl-16 pr-8 text-3xl lg:text-4xl font-serif font-black focus:ring-4 focus:ring-primary/10 transition-all shadow-inner outline-none"
                           placeholder="0.00"
                         />
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[#847365]/60 ml-2">Mes</label>
+                    <div className="space-y-2 lg:space-y-3">
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary/40 ml-2">Mes</label>
                       <select 
                         value={paymentForm.month}
                         onChange={(e) => setPaymentForm({...paymentForm, month: parseInt(e.target.value)})}
-                        className="w-full h-14 bg-white border-none rounded-2xl px-6 font-bold text-[#2D241E] focus:ring-4 focus:ring-[#E67E22]/10"
+                        className="w-full h-12 lg:h-14 bg-background border border-border/50 rounded-xl lg:rounded-2xl px-5 font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
                       >
                         {months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
                       </select>
                     </div>
 
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[#847365]/60 ml-2">Método</label>
+                    <div className="space-y-2 lg:space-y-3">
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary/40 ml-2">Método</label>
                       <select 
                         value={paymentForm.method}
                         onChange={(e) => setPaymentForm({...paymentForm, method: e.target.value})}
-                        className="w-full h-14 bg-white border-none rounded-2xl px-6 font-bold text-[#2D241E] focus:ring-4 focus:ring-[#E67E22]/10"
+                        className="w-full h-12 lg:h-14 bg-background border border-border/50 rounded-xl lg:rounded-2xl px-5 font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
                       >
                         <option value="cash">Efectivo</option>
                         <option value="transfer">Transferencia</option>
@@ -470,24 +563,25 @@ export default function PagosPage() {
                       </select>
                     </div>
 
-                    <div className="col-span-2 space-y-3">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[#847365]/60 ml-2">Notas Especiales</label>
+                    <div className="sm:col-span-2 space-y-2 lg:space-y-3">
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary/40 ml-2">Notas Especiales</label>
                       <input 
                         value={paymentForm.notes}
                         onChange={(e) => setPaymentForm({...paymentForm, notes: e.target.value})}
-                        placeholder="Ej: Promo familiar aplicada..."
-                        className="w-full h-16 bg-white border-none rounded-2xl px-6 font-medium focus:ring-4 focus:ring-[#E67E22]/10 shadow-sm"
+                        placeholder="Ej: Pago adelantado..."
+                        className="w-full h-12 lg:h-14 bg-background border border-border/50 rounded-xl lg:rounded-2xl px-5 font-medium outline-none focus:ring-2 focus:ring-primary/20 shadow-sm"
                       />
                     </div>
 
-                    <div className="col-span-2 pt-6">
+                    <div className="sm:col-span-2 pt-4 lg:pt-6">
                       <Button 
                         disabled={saving || !selectedStudentId || !paymentForm.amount}
-                        className="w-full h-20 bg-[#2D241E] hover:bg-[#E67E22] text-white rounded-[32px] font-serif font-bold text-xl transition-all shadow-2xl active:scale-95 disabled:opacity-50"
+                        type="submit"
+                        className="w-full h-16 lg:h-20 bg-primary hover:bg-primary/90 text-white rounded-2xl lg:rounded-[32px] font-serif font-bold text-lg lg:text-xl transition-all shadow-xl active:scale-95 disabled:opacity-50"
                       >
-                        {saving ? <Loader2 className="w-6 h-6 animate-spin mx-auto" /> : "Confirmar y Registrar"}
+                        {saving ? <Loader2 className="w-6 h-6 animate-spin mx-auto text-white" /> : "Confirmar Pago"}
                       </Button>
-                      <p className="text-center mt-6 text-[10px] font-black uppercase tracking-widest text-[#847365]/40 flex items-center justify-center gap-2">
+                      <p className="text-center mt-6 text-[10px] font-black uppercase tracking-widest text-secondary/40 flex items-center justify-center gap-2">
                         <Info className="w-3.5 h-3.5" /> La transacción impactará en el balance mensual
                       </p>
                     </div>
@@ -497,7 +591,92 @@ export default function PagosPage() {
             </motion.div>
           )}
         </AnimatePresence>
-      </main>
-    </div>
+
+        {/* Improved Monthly Report Modal - Sahara Style */}
+        <AnimatePresence>
+          {showReportModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-4">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowReportModal(false)} className="absolute inset-0 bg-[#2D241E]/80 backdrop-blur-md" />
+              <motion.div 
+                initial={{ y: "100%", opacity: 0 }} 
+                animate={{ y: 0, opacity: 1 }} 
+                exit={{ y: "100%", opacity: 0 }} 
+                className="relative bg-white w-full h-full md:max-w-4xl md:h-[90vh] md:rounded-[40px] shadow-2xl overflow-hidden flex flex-col"
+              >
+                {/* Header */}
+                <div className="p-6 md:p-8 border-b border-[#F5F1EE] flex items-center justify-between bg-[#FDFCFB] shrink-0">
+                  <div className="flex items-center gap-4">
+                    <button onClick={() => setShowReportModal(false)} className="md:hidden p-2"><ChevronRight className="rotate-180" /></button>
+                    <div>
+                      <h3 className="text-xl md:text-2xl font-serif font-bold leading-none">Informe de Recaudación</h3>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-[#847365]/60 mt-1">{months[selectedMonth.getMonth()]} {selectedMonth.getFullYear()}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button disabled={generatingPdf} onClick={generateReportPdf} variant="outline" className="hidden sm:flex rounded-xl gap-2 border-[#E8E2DC]">
+                      {generatingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} 
+                      Exportar PDF
+                    </Button>
+                    <button onClick={() => setShowReportModal(false)} className="hidden md:flex p-2 hover:bg-red-50 rounded-full text-[#847365]/40 hover:text-red-500 transition-all">
+                      <XCircle className="w-6 h-6" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Document Preview */}
+                <div className="flex-1 overflow-y-auto p-4 md:p-12 bg-[#F5F1EE]/30">
+                  <div ref={reportRef} className="bg-white shadow-xl rounded-[24px] md:rounded-[32px] p-6 md:p-12 max-w-2xl mx-auto border border-[#847365]/5 min-h-[80vh] flex flex-col font-sans">
+                     <div className="flex justify-between items-start mb-12">
+                        <div className="px-4 py-2 bg-[#2D241E] rounded-xl text-white font-black italic tracking-tighter">SAHARA</div>
+                        <div className="text-right">
+                           <p className="text-[10px] font-black uppercase tracking-widest text-[#847365]/40">Periodo de Liquidación</p>
+                           <p className="text-xs font-bold">{months[selectedMonth.getMonth()]} {selectedMonth.getFullYear()}</p>
+                        </div>
+                     </div>
+
+                     <div className="p-8 bg-[#FDFCFB] rounded-3xl border border-[#847365]/5 text-center mb-12">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-[#847365]/60 mb-2">Ingresos Consolidados</p>
+                        <p className="text-4xl font-black text-primary">${monthlyTotal.toLocaleString('es-AR')}</p>
+                     </div>
+
+                     <div className="mb-12">
+                        <h4 className="text-[10px] font-black uppercase tracking-widest text-[#847365]/40 mb-4 px-2">Desglose por Método</h4>
+                        <div className="space-y-4">
+                           <div className="flex justify-between items-center py-3 px-4 border-b border-[#F5F1EE]">
+                              <span className="text-sm font-bold flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-green-500" />Efectivo</span>
+                              <span className="text-sm font-black text-[#847365]">${stats.cash.toLocaleString('es-AR')}</span>
+                           </div>
+                           <div className="flex justify-between items-center py-3 px-4 border-b border-[#F5F1EE]">
+                              <span className="text-sm font-bold flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-blue-500" />Transferencia</span>
+                              <span className="text-sm font-black text-[#847365]">${stats.transfer.toLocaleString('es-AR')}</span>
+                           </div>
+                           <div className="flex justify-between items-center py-3 px-4 border-b border-[#F5F1EE]">
+                              <span className="text-sm font-bold flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-orange-500" />Tarjeta</span>
+                              <span className="text-sm font-black text-[#847365]">${stats.card.toLocaleString('es-AR')}</span>
+                           </div>
+                        </div>
+                     </div>
+
+                     <div className="mt-auto pt-8 border-t border-[#847365]/10 text-center">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-[#847365]/40 mb-1">Total de Operaciones</p>
+                        <p className="text-2xl font-black text-[#2D241E]">{payments.length} transacciones</p>
+                     </div>
+                  </div>
+                  
+                  {/* Floating Action for Mobile PDF */}
+                  <div className="mt-6 md:hidden">
+                    <Button disabled={generatingPdf} onClick={generateReportPdf} className="w-full h-14 rounded-2xl bg-primary text-white font-black gap-2">
+                       <Download className="w-5 h-5" /> Descargar Auditoría (PDF)
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
+    </DashboardShell>
   );
 }
+
+
