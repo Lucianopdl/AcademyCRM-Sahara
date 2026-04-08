@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Sidebar } from "@/components/sidebar";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 import { 
   Users, 
   TrendingUp, 
@@ -65,14 +65,14 @@ export default function Dashboard() {
     fetchDashboardData();
   }, []);
 
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { staggerChildren: 0.08 } }
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { y: 15, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 120, damping: 20 } }
+    visible: { y: 0, opacity: 1, transition: { type: "spring" as const, stiffness: 120, damping: 20 } }
   };
 
   return (

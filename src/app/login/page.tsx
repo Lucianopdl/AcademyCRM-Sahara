@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -59,7 +59,7 @@ export default function LoginPage() {
   };
 
   // --- Animation Variants ---
-  const containerVariants: any = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -67,21 +67,21 @@ export default function LoginPage() {
     },
   };
 
-  const itemVariants: any = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
       opacity: 1,
       y: 0,
-      transition: { type: "spring", stiffness: 100, damping: 18 },
+      transition: { type: "spring" as const, stiffness: 100, damping: 18 },
     },
   };
 
-  const brandVariants: any = {
+  const brandVariants: Variants = {
     hidden: { opacity: 0, x: -30 },
     visible: {
       opacity: 1,
       x: 0,
-      transition: { type: "spring", stiffness: 80, damping: 20, delay: 0.3 },
+      transition: { type: "spring" as const, stiffness: 80, damping: 20, delay: 0.3 },
     },
   };
 

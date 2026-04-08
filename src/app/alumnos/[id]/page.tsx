@@ -720,7 +720,7 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
 
           return (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#2D241E]/70 backdrop-blur-xl">
-              <motion.div initial={{ scale: 0.85, y: 40, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.85, y: 40, opacity: 0 }} transition={{ type: 'spring', damping: 25, stiffness: 300 }} className="bg-white w-full max-w-[380px] max-h-[90vh] overflow-y-auto rounded-[28px] shadow-2xl">
+              <motion.div initial={{ scale: 0.85, y: 40, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.85, y: 40, opacity: 0 }} transition={{ type: 'spring' as const, damping: 25, stiffness: 300 }} className="bg-white w-full max-w-[380px] max-h-[90vh] overflow-y-auto rounded-[28px] shadow-2xl">
                 
                 {/* Captura para PDF */}
                 <div ref={receiptRef} className="bg-white">
