@@ -3,13 +3,13 @@
 import React, { useEffect, useState } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ClipboardCheck, 
-  Search, 
-  Calendar, 
-  Check, 
-  X, 
-  Clock, 
+import {
+  ClipboardCheck,
+  Search,
+  Calendar,
+  Check,
+  X,
+  Clock,
   AlertCircle,
   Loader2,
   ChevronLeft,
@@ -62,41 +62,58 @@ export default function AsistenciasPage() {
   async function fetchData() {
     setLoading(true);
     try {
-      // 1. Fetch Classes
-      const { data: classData } = await supabase.from('classes').select('id, name, category_id');
-      setClasses(classData || []);
-
-      // 2. Fetch Students (Filtering logic depends on whether a class is selected)
-      let query = supabase.from('students').select('id, full_name, category_id').eq('status', 'active');
-      if (selectedClassId !== "all") {
-        // If they use the standard "enrollments" model:
-        const { data: enrolledStudents } = await supabase.from('enrollments').select('student_id').eq('class_id', selectedClassId);
-        const studentIds = enrolledStudents?.map(e => e.student_id) || [];
-        query = query.in('id', studentIds);
+      // 1. Fetch Classes solo si no están cacheadas localmente
+      if (classes.length === 0) {
+        const { data: classData } = await supabase.from('classes').select('id, name, category_id').order('name');
+        setClasses(classData || []);
       }
+
+      // 2. Si no hay clase seleccionada, optimizamos y salimos temprano
+      if (selectedClassId === "all") {
+        setStudents([]);
+        setAttendanceData({});
+        setLoading(false);
+        return;
+      }
+
+      // 3. Fetch Students inscriptos en la clase
+      const { data: enrolledStudents, error: enrollError } = await supabase
+        .from('enrollments')
+        .select('student_id')
+        .eq('class_id', selectedClassId);
       
-      const { data: studData } = await query;
+      const studentIds = enrolledStudents?.map(e => e.student_id) || [];
+
+      if (studentIds.length === 0) {
+        setStudents([]);
+        setAttendanceData({});
+        setLoading(false);
+        return;
+      }
+
+      const { data: studData } = await supabase
+        .from('students')
+        .select('id, full_name, category_id')
+        .eq('status', 'active')
+        .in('id', studentIds)
+        .order('full_name');
+
       setStudents(studData || []);
 
-      // 3. Fetch existing attendance for this date AND class (if selected)
+      // 4. Fetch asistencias previas
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
-      let attQuery = supabase
+      const { data: attData } = await supabase
         .from('attendance')
         .select('student_id, status, notes, class_id')
-        .eq('date', dateStr);
-
-      if (selectedClassId !== "all") {
-        attQuery = attQuery.eq('class_id', selectedClassId);
-      }
-
-      const { data: attData } = await attQuery;
+        .eq('date', dateStr)
+        .eq('class_id', selectedClassId);
 
       const attMap: Record<string, Attendance> = {};
       attData?.forEach(record => {
         attMap[record.student_id] = {
           student_id: record.student_id,
           class_id: record.class_id,
-          status: record.status as any,
+          status: record.status as 'present' | 'absent' | 'late' | 'justified',
           notes: record.notes
         };
       });
@@ -116,6 +133,18 @@ export default function AsistenciasPage() {
     }));
   };
 
+  const markAllPresent = () => {
+    const newAtt = { ...attendanceData };
+    students.forEach(student => {
+      newAtt[student.id] = {
+        student_id: student.id,
+        class_id: selectedClassId !== "all" ? selectedClassId : undefined,
+        status: 'present'
+      };
+    });
+    setAttendanceData(newAtt);
+  };
+
   const saveAttendance = async () => {
     if (selectedClassId === "all") {
       alert("Por favor selecciona una Clase específica para guardar la asistencia.");
@@ -124,15 +153,15 @@ export default function AsistenciasPage() {
     setSaving(true);
     setSavingStatus('idle');
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    
+
     try {
       const records = Object.values(attendanceData)
-        .filter(att => att.status && att.student_id)
+        .filter(att => att.status && att.student_id && att.class_id)
         .map(att => ({
           student_id: att.student_id,
           status: att.status,
           date: dateStr,
-          class_id: selectedClassId,
+          class_id: att.class_id,
           notes: att.notes || ''
         }));
 
@@ -141,22 +170,27 @@ export default function AsistenciasPage() {
         return;
       }
 
+      // Upsert: Si ya existe una asistencia para el alumno, clase y fecha, la actualiza.
       const { error } = await supabase
         .from('attendance')
         .upsert(records, { onConflict: 'student_id, class_id, date' });
 
-      if (error) throw error;
+      if (error) {
+        throw new Error(error.message || JSON.stringify(error));
+      }
+      
       setSavingStatus('success');
       setTimeout(() => setSavingStatus('idle'), 3000);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving attendance:", error);
+      alert("Error al guardar asistencia: " + (error?.message || "Revisá la consola."));
       setSavingStatus('error');
     } finally {
       setSaving(false);
     }
   };
 
-  const filteredStudents = students; // The filtering is already done in fetchData query
+  const filteredStudents = students;
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -169,11 +203,11 @@ export default function AsistenciasPage() {
               <h1 className="text-3xl font-serif font-bold text-foreground">Asistencias</h1>
               <p className="text-secondary/70 mt-1">Control diario de alumnos por disciplina.</p>
             </div>
-            
+
             <div className="flex items-center gap-3">
-              <Button 
-                variant="outline" 
-                size="icon" 
+              <Button
+                variant="outline"
+                size="icon"
                 onClick={() => setSelectedDate(subDays(selectedDate, 1))}
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -182,9 +216,9 @@ export default function AsistenciasPage() {
                 <Calendar className="w-4 h-4 text-primary" />
                 {format(selectedDate, "eeee dd 'de' MMMM", { locale: es })}
               </div>
-              <Button 
-                variant="outline" 
-                size="icon" 
+              <Button
+                variant="outline"
+                size="icon"
                 onClick={() => setSelectedDate(addDays(selectedDate, 1))}
               >
                 <ChevronRight className="w-4 h-4" />
@@ -201,7 +235,7 @@ export default function AsistenciasPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="relative md:col-span-1">
               <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary/40" />
-              <select 
+              <select
                 value={selectedClassId}
                 onChange={(e) => setSelectedClassId(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-card border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
@@ -213,10 +247,20 @@ export default function AsistenciasPage() {
               </select>
             </div>
 
-            <div className="flex-1" />
+            <div className="flex-1 md:col-span-1" />
 
-            <Button 
-              variant="primary" 
+            <Button
+              variant="outline"
+              className="md:col-span-1 gap-2"
+              onClick={markAllPresent}
+              disabled={loading || selectedClassId === "all" || filteredStudents.length === 0}
+            >
+              <Check className="w-4 h-4" />
+              Todos Presentes
+            </Button>
+
+            <Button
+              variant="primary"
               className="md:col-span-1 shadow-warm gap-2"
               onClick={saveAttendance}
               disabled={saving || filteredStudents.length === 0 || selectedClassId === "all"}
@@ -267,29 +311,29 @@ export default function AsistenciasPage() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-center gap-2">
-                            <AttendanceButton 
-                              active={att?.status === 'present'} 
+                            <AttendanceButton
+                              active={att?.status === 'present'}
                               onClick={() => handleStatusChange(student.id, 'present')}
                               icon={<Check className="w-4 h-4" />}
                               label="Presente"
                               variant="success"
                             />
-                            <AttendanceButton 
-                              active={att?.status === 'absent'} 
+                            <AttendanceButton
+                              active={att?.status === 'absent'}
                               onClick={() => handleStatusChange(student.id, 'absent')}
                               icon={<X className="w-4 h-4" />}
                               label="Ausente"
                               variant="danger"
                             />
-                            <AttendanceButton 
-                              active={att?.status === 'late'} 
+                            <AttendanceButton
+                              active={att?.status === 'late'}
                               onClick={() => handleStatusChange(student.id, 'late')}
                               icon={<Clock className="w-4 h-4" />}
                               label="Tarde"
                               variant="warning"
                             />
-                            <AttendanceButton 
-                              active={att?.status === 'justified'} 
+                            <AttendanceButton
+                              active={att?.status === 'justified'}
                               onClick={() => handleStatusChange(student.id, 'justified')}
                               icon={<HelpCircle className="w-4 h-4" />}
                               label="Justificado"
@@ -304,13 +348,13 @@ export default function AsistenciasPage() {
               </table>
             )}
           </div>
-          
+
           {/* Legend */}
           <div className="mt-6 flex flex-wrap gap-4 justify-center text-xs text-secondary/60">
-             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Presente</div>
-             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-rose-500" /> Ausente</div>
-             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500" /> Tarde</div>
-             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-sky-500" /> Justificado</div>
+            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Presente</div>
+            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-rose-500" /> Ausente</div>
+            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500" /> Tarde</div>
+            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-sky-500" /> Justificado</div>
           </div>
         </div>
       </main>
@@ -318,10 +362,10 @@ export default function AsistenciasPage() {
   );
 }
 
-function AttendanceButton({ active, onClick, icon, label, variant }: { 
-  active: boolean, 
-  onClick: () => void, 
-  icon: React.ReactNode, 
+function AttendanceButton({ active, onClick, icon, label, variant }: {
+  active: boolean,
+  onClick: () => void,
+  icon: React.ReactNode,
   label: string,
   variant: 'success' | 'danger' | 'warning' | 'info'
 }) {

@@ -97,13 +97,6 @@ export function Sidebar() {
             </p>
           </div>
         </div>
-
-        <Link href="/alumnos/nuevo">
-          <Button variant="primary" className="w-full justify-start gap-2 h-12 shadow-warm">
-            <PlusCircle className="w-4 h-4" />
-            <span className="font-semibold">Nuevo Alumno</span>
-          </Button>
-        </Link>
       </div>
 
       <nav className="flex-1 px-4 mt-6 space-y-1">

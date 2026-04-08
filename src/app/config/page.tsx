@@ -217,14 +217,20 @@ export default function ConfigPage() {
                                       if (!file) return;
                                       try {
                                         setSaving(true);
-                                        const fileExt = file.name.split('.').pop();
-                                        const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-                                        const filePath = `logos/${fileName}`;
-                                        const { error: uploadError } = await supabase.storage.from('logos').upload(filePath, file);
-                                        if (uploadError) throw uploadError;
-                                        const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(filePath);
-                                        setFormData({ ...formData, logo_url: publicUrl });
-                                      } catch (err) { console.error(err); } finally { setSaving(false); }
+                                        const formDataToUpload = new FormData();
+                                        formDataToUpload.append("file", file);
+                                        
+                                        const { uploadLogoAction } = await import('@/app/actions/upload-logo');
+                                        const result = await uploadLogoAction(formDataToUpload);
+                                        
+                                        if (!result.success || !result.url) throw new Error(result.error || "No se obtuvo una URL");
+                                        setFormData({ ...formData, logo_url: result.url });
+                                      } catch (err: any) { 
+                                        console.error(err);
+                                        setMessage({ type: 'error', text: err.message || 'Error al subir el logo' });
+                                      } finally { 
+                                        setSaving(false); 
+                                      }
                                     }}
                                   />
                                   <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-[#E67E22] rounded-full flex items-center justify-center text-white shadow-lg shadow-[#E67E22]/40 opacity-0 group-hover:opacity-100 transition-opacity">

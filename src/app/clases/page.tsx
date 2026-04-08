@@ -20,7 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Category {
   id: string;
@@ -40,12 +40,17 @@ export default function ClasesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currency, setCurrency] = useState("$");
+   const [activeTab, setActiveTab] = useState<'categories' | 'classes'>('categories');
+   const [search, setSearch] = useState("");
+   const [filterCatId, setFilterCatId] = useState("all");
+   const [currency, setCurrency] = useState("$");
   
   // Modal/Form States
   const [showCatForm, setShowCatForm] = useState(false);
   const [showClassForm, setShowClassForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingClass, setEditingClass] = useState<ClassItem | null>(null);
+  
   const [newCatName, setNewCatName] = useState("");
   const [newCatPrice, setNewCatPrice] = useState("");
   const [newClassName, setNewClassName] = useState("");
@@ -65,6 +70,13 @@ export default function ClasesPage() {
     if (settingsData?.currency) setCurrency(settingsData.currency);
     setLoading(false);
   };
+
+  const filteredClasses = classes.filter(c => {
+    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) || 
+                         c.teacher_name?.toLowerCase().includes(search.toLowerCase());
+    const matchesCategory = filterCatId === "all" || c.category_id === filterCatId;
+    return matchesSearch && matchesCategory;
+  });
 
   useEffect(() => {
     fetchData();
@@ -101,16 +113,29 @@ export default function ClasesPage() {
   const handleAddClass = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    const { error } = await supabase.from('classes').insert([{ 
+    
+    const payload = { 
       name: newClassName, 
       teacher_name: newClassTeacher,
       schedule: newClassSchedule,
       category_id: selectedCatId || null
-    }]);
+    };
+
+    let error;
+    if (editingClass) {
+      const res = await supabase.from('classes').update(payload).eq('id', editingClass.id);
+      error = res.error;
+    } else {
+      const res = await supabase.from('classes').insert([payload]);
+      error = res.error;
+    }
+
     if (!error) {
       setNewClassName("");
       setNewClassTeacher("");
       setNewClassSchedule("");
+      setSelectedCatId("");
+      setEditingClass(null);
       setShowClassForm(false);
       fetchData();
     }
@@ -124,8 +149,15 @@ export default function ClasesPage() {
     }
   };
 
+  const deleteClass = async (id: string) => {
+    if (confirm("¿Estás seguro de eliminar esta clase? Se perderá el historial de inscripciones.")) {
+      await supabase.from('classes').delete().eq('id', id);
+      fetchData();
+    }
+  };
+
   return (
-    <div className="flex bg-[#FDFCFB] min-h-screen text-[#2D241E]">
+    <div className="flex bg-[#F0EEEB] min-h-screen text-[#2D241E]">
       <Sidebar />
       <main className="flex-1 p-6 lg:p-10 overflow-y-auto">
         <header className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
@@ -145,6 +177,7 @@ export default function ClasesPage() {
                 setNewCatName("");
                 setNewCatPrice("");
                 setShowCatForm(!showCatForm);
+                setShowClassForm(false);
               }}
               className={cn(
                 "gap-2 h-12 px-6 rounded-2xl font-bold transition-all shadow-lg active:scale-95",
@@ -154,7 +187,15 @@ export default function ClasesPage() {
               <Layers className="w-4 h-4" /> Nueva Categoría
             </Button>
             <Button 
-              onClick={() => setShowClassForm(!showClassForm)}
+              onClick={() => {
+                setEditingClass(null);
+                setNewClassName("");
+                setNewClassTeacher("");
+                setNewClassSchedule("");
+                setSelectedCatId("");
+                setShowClassForm(!showClassForm);
+                setShowCatForm(false);
+              }}
               className="gap-2 h-12 px-6 rounded-2xl bg-[#E67E22] hover:bg-[#D35400] text-white font-bold transition-all shadow-lg shadow-[#E67E22]/20 active:scale-95"
             >
               <PlusCircle className="w-4 h-4" /> Crear Clase
@@ -164,204 +205,290 @@ export default function ClasesPage() {
 
         {/* Forms Section */}
         <div className="space-y-6 mb-10">
-          {showCatForm && (
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
-              className="bg-[#F5F1EE] p-8 rounded-[32px] shadow-warm border border-[#847365]/5"
-            >
-              <h3 className="text-2xl font-serif font-bold mb-6 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                   <Layers className="w-6 h-6 text-[#E67E22]" /> 
-                   {editingCategory ? "Editar Categoría" : "Configurar Nueva Categoría"}
-                </div>
-                {editingCategory && (
-                  <button 
-                    onClick={() => {
-                      setEditingCategory(null);
-                      setNewCatName("");
-                      setNewCatPrice("");
-                      setShowCatForm(false);
-                    }}
-                    className="text-[10px] font-bold uppercase tracking-widest text-[#E74C3C] hover:underline"
-                  >
-                    Cancelar Edición
-                  </button>
-                )}
-              </h3>
-              <form onSubmit={handleAddCategory} className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
-                <div className="md:col-span-2 space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#847365] ml-1">Nombre de la Categoría</label>
-                  <input 
-                    required placeholder="Ej: Piano / Yoga / Danza"
-                    value={newCatName} onChange={(e) => setNewCatName(e.target.value)}
-                    className="w-full bg-white rounded-2xl px-5 py-4 focus:ring-2 focus:ring-[#E67E22]/20 outline-none transition-all placeholder:opacity-30"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#847365] ml-1">Precio Mensual ({currency})</label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-[#E67E22]">$</span>
+          <AnimatePresence>
+            {showCatForm && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                className="bg-[#F5F1EE] p-8 rounded-[32px] shadow-warm border border-[#847365]/5 overflow-hidden"
+              >
+                <h3 className="text-2xl font-serif font-bold mb-6 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                     <Layers className="w-6 h-6 text-[#E67E22]" /> 
+                     {editingCategory ? "Editar Categoría" : "Configurar Nueva Categoría"}
+                  </div>
+                </h3>
+                <form onSubmit={handleAddCategory} className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-[#847365] ml-1">Nombre de la Categoría</label>
                     <input 
-                      type="number"
-                      required placeholder="0.00"
-                      value={newCatPrice} onChange={(e) => setNewCatPrice(e.target.value)}
-                      className="w-full bg-white rounded-2xl pl-10 pr-5 py-4 focus:ring-2 focus:ring-[#E67E22]/20 outline-none transition-all"
+                      required placeholder="Ej: Piano / Yoga / Danza"
+                      value={newCatName} onChange={(e) => setNewCatName(e.target.value)}
+                      className="w-full bg-white rounded-2xl px-5 py-4 focus:ring-2 focus:ring-[#E67E22]/20 outline-none transition-all placeholder:opacity-30"
                     />
                   </div>
-                </div>
-                <div>
-                  <Button disabled={saving} type="submit" className="w-full h-14 rounded-2xl bg-[#2D241E] hover:bg-black text-white font-bold gap-2">
-                    {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <><CheckCircle2 className="w-5 h-5" /> Guardar</>}
-                  </Button>
-                </div>
-              </form>
-            </motion.div>
-          )}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-[#847365] ml-1">Precio Mensual ({currency})</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-[#E67E22]">$</span>
+                      <input 
+                        type="number"
+                        required placeholder="0.00"
+                        value={newCatPrice} onChange={(e) => setNewCatPrice(e.target.value)}
+                        className="w-full bg-white rounded-2xl pl-10 pr-5 py-4 focus:ring-2 focus:ring-[#E67E22]/20 outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button disabled={saving} type="submit" className="flex-1 h-14 rounded-2xl bg-[#E67E22] text-white font-bold gap-2">
+                      {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : "Guardar"}
+                    </Button>
+                    <Button type="button" onClick={() => setShowCatForm(false)} className="h-14 w-14 rounded-2xl bg-white border border-[#847365]/10 text-[#847365] p-0"><Trash2 className="w-5 h-5" /></Button>
+                  </div>
+                </form>
+              </motion.div>
+            )}
 
-          {showClassForm && (
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
-              className="bg-[#F5F1EE] p-8 rounded-[32px] shadow-warm border border-[#847365]/5"
-            >
-              <h3 className="text-2xl font-serif font-bold mb-6 flex items-center gap-3">
-                <Music className="w-6 h-6 text-[#E67E22]" /> Nueva Clase / Taller
-              </h3>
-              <form onSubmit={handleAddClass} className="grid grid-cols-1 md:grid-cols-4 gap-6 relative z-10">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#847365] ml-1">Nombre de Clase</label>
-                  <input 
-                    required placeholder="Clase de Piano I"
-                    value={newClassName} onChange={(e) => setNewClassName(e.target.value)}
-                    className="w-full bg-white rounded-2xl px-5 py-3.5 focus:ring-2 focus:ring-[#E67E22]/20 outline-none"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#847365] ml-1">Profesor</label>
-                  <input 
-                    placeholder="Prof. García"
-                    value={newClassTeacher} onChange={(e) => setNewClassTeacher(e.target.value)}
-                    className="w-full bg-white rounded-2xl px-5 py-3.5 focus:ring-2 focus:ring-[#E67E22]/20 outline-none"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#847365] ml-1">Horario</label>
-                  <input 
-                    placeholder="Lunes y Miércoles 18hs"
-                    value={newClassSchedule} onChange={(e) => setNewClassSchedule(e.target.value)}
-                    className="w-full bg-white rounded-2xl px-5 py-3.5 focus:ring-2 focus:ring-[#E67E22]/20 outline-none"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-[#847365] ml-1">Categoría</label>
-                  <select 
-                    required
-                    className="w-full bg-white rounded-2xl px-5 py-3.5 outline-none h-[51px] appearance-none cursor-pointer"
-                    value={selectedCatId} onChange={(e) => setSelectedCatId(e.target.value)}
-                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23847365' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5' /%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
-                  >
-                    <option value="">Seleccionar Categoría</option>
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </div>
-                <div className="md:col-span-4 flex justify-end">
-                  <Button disabled={saving} type="submit" className="bg-[#2D241E] hover:bg-black text-white px-10 h-14 rounded-2xl font-bold transition-all shadow-lg active:scale-95">
-                    {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : "Crear Clase"}
-                  </Button>
-                </div>
-              </form>
-            </motion.div>
-          )}
+            {showClassForm && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                className="bg-[#F5F1EE] p-8 rounded-[32px] shadow-warm border border-[#847365]/5 overflow-hidden"
+              >
+                <h3 className="text-2xl font-serif font-bold mb-6 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Music className="w-6 h-6 text-[#E67E22]" /> 
+                    {editingClass ? `Editando: ${editingClass.name}` : "Nueva Clase / Taller"}
+                  </div>
+                </h3>
+                <form onSubmit={handleAddClass} className="grid grid-cols-1 md:grid-cols-4 gap-6 relative z-10">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-[#847365] ml-1">Nombre de Clase</label>
+                    <input 
+                      required placeholder="Clase de Piano I"
+                      value={newClassName} onChange={(e) => setNewClassName(e.target.value)}
+                      className="w-full bg-white rounded-2xl px-5 py-3.5 focus:ring-2 focus:ring-[#E67E22]/20 outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-[#847365] ml-1">Profesor</label>
+                    <input 
+                      placeholder="Prof. García"
+                      value={newClassTeacher} onChange={(e) => setNewClassTeacher(e.target.value)}
+                      className="w-full bg-white rounded-2xl px-5 py-3.5 focus:ring-2 focus:ring-[#E67E22]/20 outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-[#847365] ml-1">Horario</label>
+                    <input 
+                      placeholder="Lunes y Miércoles 18hs"
+                      value={newClassSchedule} onChange={(e) => setNewClassSchedule(e.target.value)}
+                      className="w-full bg-white rounded-2xl px-5 py-3.5 focus:ring-2 focus:ring-[#E67E22]/20 outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-[#847365] ml-1">Categoría</label>
+                    <select 
+                      required
+                      className="w-full bg-white rounded-2xl px-5 py-3.5 outline-none h-[51px] appearance-none cursor-pointer"
+                      value={selectedCatId} onChange={(e) => setSelectedCatId(e.target.value)}
+                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23847365' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5' /%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
+                    >
+                      <option value="">Seleccionar Categoría</option>
+                      {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="md:col-span-4 flex justify-end gap-3">
+                    <Button type="button" onClick={() => setShowClassForm(false)} className="bg-white border border-[#847365]/10 text-[#847365] hover:bg-[#F5F1EE] px-8 h-14 rounded-2xl font-bold transition-all shadow-sm">Cancelar</Button>
+                    <Button disabled={saving} type="submit" className="bg-[#2D241E] hover:bg-black text-white px-10 h-14 rounded-2xl font-bold transition-all shadow-lg active:scale-95">
+                      {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : editingClass ? "Guardar Cambios" : "Crear Clase"}
+                    </Button>
+                  </div>
+                </form>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Content Lists */}
-        <div className="grid lg:grid-cols-4 gap-10">
-          {/* Categories Sidebar List */}
-          <div className="lg:col-span-1 space-y-4">
-             <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#847365]/60 mb-6 flex items-center gap-2">
-               <Layers className="w-3" /> Categorías y Precios ({categories.length})
-             </h4>
+        {/* Categories Section (Now at Top) */}
+        <section className="mb-12 bg-white/30 p-8 rounded-[32px] border border-[#847365]/10">
+           <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#847365] mb-6 flex items-center gap-2">
+             <Layers className="w-3 h-3 text-[#E67E22]" /> Gestión de Categorías ({categories.length})
+           </h4>
+           <div className="flex flex-wrap gap-4">
              {categories.length === 0 && !loading && <p className="text-[#847365]/40 italic text-sm ml-1">No hay categorías configuradas.</p>}
              {categories.map(cat => (
-               <div key={cat.id} className="bg-white border border-[#847365]/5 p-5 rounded-[24px] group hover:border-[#E67E22]/20 transition-all shadow-sm">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <span className="font-serif font-bold text-[#2D241E] text-lg block">{cat.name}</span>
-                      <span className="text-[#E67E22] font-black text-sm">{currency} {cat.price.toLocaleString()} <span className="text-[10px] text-[#847365]/40 uppercase tracking-widest">/ mes</span></span>
-                    </div>
-                    <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+               <div 
+                 key={cat.id} 
+                 className={cn(
+                   "group transition-all shadow-sm flex items-center px-6 py-4 gap-5 rounded-[24px] border-2",
+                   filterCatId === cat.id 
+                    ? "bg-[#3498DB] border-[#2980B9] text-white shadow-lg shadow-blue-500/20" 
+                    : "bg-[#EBF5FB] border-[#AED6F1] hover:border-[#3498DB] hover:shadow-md"
+                 )}
+               >
+                  <div 
+                    className="cursor-pointer flex flex-col min-w-[100px]"
+                    onClick={() => setFilterCatId(filterCatId === cat.id ? 'all' : cat.id)}
+                  >
+                    <span className={cn(
+                      "font-bold text-sm block leading-tight mb-0.5 transition-colors",
+                      filterCatId === cat.id ? "text-white" : "text-[#2C3E50]"
+                    )}>{cat.name}</span>
+                    <span className={cn(
+                      "font-black text-xs transition-colors",
+                      filterCatId === cat.id ? "text-blue-100" : "text-[#3498DB]"
+                    )}>{currency} {cat.price.toLocaleString()}</span>
+                  </div>
+                  <div className={cn(
+                    "flex gap-1 border-l pl-3 transition-colors",
+                    filterCatId === cat.id ? "border-white/20" : "border-[#AED6F1]"
+                  )}>
+                    <button 
+                      onClick={() => {
+                        setEditingCategory(cat);
+                        setNewCatName(cat.name);
+                        setNewCatPrice(cat.price.toString());
+                        setShowCatForm(true);
+                        setShowClassForm(false);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }} 
+                      className={cn(
+                        "p-2 rounded-xl transition-all",
+                        filterCatId === cat.id ? "text-white hover:bg-white/10" : "text-[#3498DB] hover:bg-white"
+                      )}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => deleteCategory(cat.id)} 
+                      className={cn(
+                        "p-2 rounded-xl transition-all",
+                        filterCatId === cat.id ? "text-white hover:bg-white/10" : "text-[#E74C3C] hover:bg-[#E74C3C]/5"
+                      )}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+               </div>
+             ))}
+           </div>
+        </section>
+
+        {/* Classes Section (Now Full Width) */}
+        <section className="space-y-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-8 border-t border-[#847365]/5 pt-10">
+            <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#847365]/60 flex items-center gap-2">
+              <Music className="w-3" /> Académico ({filteredClasses.length})
+            </h4>
+            <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
+              <div className="flex-1 md:w-80 relative">
+                <Music className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#847365]/30" />
+                <input 
+                  placeholder="Buscar clase o profesor..." 
+                  className="w-full bg-white border border-[#847365]/10 rounded-2xl pl-11 pr-4 py-3 text-sm focus:ring-2 focus:ring-[#E67E22]/20 outline-none transition-all"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <Button 
+                variant="outline"
+                onClick={() => setFilterCatId('all')}
+                className={cn(
+                  "rounded-2xl text-[10px] font-black uppercase tracking-widest h-12 px-6",
+                  filterCatId === 'all' && "bg-[#2D241E] text-white hover:bg-black hover:text-white"
+                )}
+              >
+                Todas las Clases
+              </Button>
+            </div>
+          </div>
+          
+          {loading ? (
+            <div className="flex flex-col items-center justify-center p-20 opacity-20">
+              <Loader2 className="w-10 h-10 animate-spin text-[#E67E22] mb-4" />
+              <p className="font-serif italic">Sincronizando academia...</p>
+            </div>
+          ) : filteredClasses.length === 0 ? (
+            <div className="bg-white p-20 rounded-[40px] border-2 border-dashed border-[#847365]/10 text-center">
+               <Music className="w-12 h-12 text-[#847365]/10 mx-auto mb-4" />
+               <p className="text-[#847365]/40 font-serif italic text-lg">{search || filterCatId !== 'all' ? "No se encontraron clases con esos filtros." : "Todavía no has creado ninguna clase."}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pb-20">
+              {filteredClasses.map(cls => (
+                <motion.div 
+                  layout
+                  key={cls.id} 
+                  whileHover={{ y: -8, scale: 1.02 }}
+                  className="bg-[#E67E22] p-7 rounded-[40px] group relative overflow-hidden shadow-[0_20px_50px_rgba(230,126,34,0.3)] hover:shadow-[0_40px_80px_rgba(230,126,34,0.4)] transition-all duration-500 border border-white/20"
+                >
+                  {/* Decorative Sparkle Background */}
+                  <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-bl-[100px] -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700" />
+                  
+                  <div className="flex items-start justify-between mb-8 relative z-10">
+                    <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-md rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] text-white border border-white/30">
+                      <Layers className="w-3 h-3" /> {categories.find(c => c.id === cls.category_id)?.name || 'Sin Categoría'}
+                    </span>
+                    <div className="flex gap-2">
                       <button 
                         onClick={() => {
-                          setEditingCategory(cat);
-                          setNewCatName(cat.name);
-                          setNewCatPrice(cat.price.toString());
-                          setShowCatForm(true);
-                        }} 
-                        className="text-[#847365] p-2 hover:bg-[#F5F1EE] rounded-xl transition-colors"
+                          setEditingClass(cls);
+                          setNewClassName(cls.name);
+                          setNewClassTeacher(cls.teacher_name || "");
+                          setNewClassSchedule(cls.schedule || "");
+                          setSelectedCatId(cls.category_id || "");
+                          setShowClassForm(true);
+                          setShowCatForm(false);
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/30 flex items-center justify-center text-white hover:bg-white hover:text-[#E67E22] transition-all transform hover:rotate-12"
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button 
-                        onClick={() => deleteCategory(cat.id)} 
-                        className="text-[#E74C3C] p-2 hover:bg-[#E74C3C]/5 rounded-xl transition-colors"
+                        onClick={() => deleteClass(cls.id)}
+                        className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/30 flex items-center justify-center text-white hover:bg-[#E74C3C] transition-all transform hover:-rotate-12"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
-               </div>
-             ))}
-          </div>
 
-          {/* Classes Grid */}
-          <div className="lg:col-span-3 space-y-6">
-            <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#847365]/60 mb-6 flex items-center gap-2">
-               <Music className="w-3" /> Listado de Clases Actuales ({classes.length})
-             </h4>
-            
-            {loading ? (
-              <div className="flex flex-col items-center justify-center p-20 opacity-20">
-                <Loader2 className="w-10 h-10 animate-spin text-[#E67E22] mb-4" />
-                <p className="font-serif italic">Sincronizando academia...</p>
-              </div>
-            ) : classes.length === 0 ? (
-              <div className="bg-white p-20 rounded-[40px] border-2 border-dashed border-[#847365]/10 text-center">
-                 <Music className="w-12 h-12 text-[#847365]/10 mx-auto mb-4" />
-                 <p className="text-[#847365]/40 font-serif italic text-lg">Todavía no has creado ninguna clase.</p>
-              </div>
-            ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {classes.map(cls => (
-                  <div key={cls.id} className="bg-white p-8 rounded-[32px] border border-[#847365]/5 group relative overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                    <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:rotate-12 transition-transform">
-                      <Music className="w-20 h-20" />
-                    </div>
-                    
-                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#F5F1EE] rounded-lg text-[9px] font-bold uppercase tracking-widest text-[#847365] mb-4">
-                      <Layers className="w-3 h-3" /> {categories.find(c => c.id === cls.category_id)?.name || 'Sin Categoría'}
-                    </div>
-
-                    <h3 className="text-2xl font-serif font-bold text-[#2D241E] mb-6">{cls.name}</h3>
-                    
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-[#E67E22]/5 flex items-center justify-center text-[#E67E22]">
-                          <Users className="w-4 h-4" />
-                        </div>
-                        <span className="text-sm font-bold text-[#2D241E] uppercase tracking-wider">{cls.teacher_name || 'Sin docente'}</span>
+                  <div className="relative z-10 min-h-[64px] mb-8">
+                    <h3 className="text-2xl font-serif font-bold text-white leading-tight">{cls.name}</h3>
+                  </div>
+                  
+                  <div className="space-y-4 relative z-10">
+                    <div className="flex items-center gap-4 bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20 group-hover:bg-white/20 transition-all">
+                      <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-[#E67E22] shadow-lg">
+                        <Users className="w-6 h-6" />
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-[#847365]/5 flex items-center justify-center text-[#847365]">
-                          <Calendar className="w-4 h-4" />
-                        </div>
-                        <span className="text-sm font-medium text-[#847365]">{cls.schedule || 'Horario a definir'}</span>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-white/60 leading-none mb-1">Profesor</p>
+                        <span className="text-sm font-bold text-white truncate block">{cls.teacher_name || 'Sin asignar'}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-4 bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20 group-hover:bg-white/20 transition-all">
+                      <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-white">
+                        <Calendar className="w-6 h-6" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-white/60 leading-none mb-1">Horario</p>
+                        <span className="text-sm font-medium text-white/90 truncate block italic">{cls.schedule || 'A confirmar'}</span>
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+
+                  {/* Background musical note decoration */}
+                  <div className="absolute -bottom-6 -right-6 opacity-10 group-hover:opacity-20 transition-all duration-500 transform group-hover:scale-125">
+                    <Music className="w-32 h-32 text-white" />
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </section>
       </main>
 
       <style jsx global>{`
@@ -372,3 +499,4 @@ export default function ClasesPage() {
     </div>
   );
 }
+
