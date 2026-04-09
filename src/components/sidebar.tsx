@@ -9,9 +9,6 @@ import {
   GraduationCap, 
   CreditCard, 
   Settings, 
-  PlusCircle,
-  Menu,
-  ChevronRight,
   School,
   Moon,
   Sun,
@@ -19,7 +16,6 @@ import {
   Wallet
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "./ui/button";
 import { supabase } from "@/lib/supabase";
 
 const navItems = [
@@ -37,18 +33,35 @@ export function Sidebar() {
   const [academyName, setAcademyName] = useState("Sahara");
   const [rubro, setRubro] = useState("Academy Manager");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
-
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check local storage or system preference
     const savedTheme = localStorage.getItem("theme");
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    
     if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
       setIsDarkMode(true);
       document.documentElement.classList.add("dark");
     }
+
+    async function getUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setUserEmail(user.email || null);
+    }
+    getUser();
+
+    async function fetchSettings() {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('academy_name, category, logo_url')
+        .single();
+      if (data && !error) {
+        setAcademyName(data.academy_name || "Sahara");
+        setRubro(data.category || "Academy Manager");
+        setLogoUrl(data.logo_url);
+      }
+    }
+    fetchSettings();
   }, []);
 
   const toggleDarkMode = () => {
@@ -62,22 +75,6 @@ export function Sidebar() {
       localStorage.setItem("theme", "light");
     }
   };
-
-  useEffect(() => {
-    async function fetchSettings() {
-      const { data, error } = await supabase
-        .from('settings')
-        .select('academy_name, category, logo_url')
-        .single();
-      
-      if (data && !error) {
-        setAcademyName(data.academy_name || "Sahara");
-        setRubro(data.category || "Academy Manager");
-        setLogoUrl(data.logo_url);
-      }
-    }
-    fetchSettings();
-  }, []);
 
   return (
     <aside className="hidden lg:flex w-72 bg-card border-r border-border h-screen flex-col sticky top-0 shadow-sm">
@@ -121,7 +118,7 @@ export function Sidebar() {
                 <span className="font-medium text-sm">{item.name}</span>
               </div>
               {isActive && (
-                <div className="w-1.5 h-1.5 bg-primary rounded-full shadow-[0_0_8px_rgba(194,101,42,0.8)]" />
+                <div className="w-1.5 h-1.5 bg-primary rounded-full" />
               )}
             </Link>
           );
@@ -129,16 +126,11 @@ export function Sidebar() {
       </nav>
 
       <div className="p-4 border-t border-border mt-auto">
-        {/* Toggle Theme */}
         <button
           onClick={toggleDarkMode}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-secondary hover:bg-primary/5 hover:text-primary transition-all duration-300 mb-2 group"
         >
-          {isDarkMode ? (
-            <Sun className="w-5 h-5 group-hover:rotate-45 transition-transform duration-500" />
-          ) : (
-            <Moon className="w-5 h-5 group-hover:-rotate-12 transition-transform duration-500" />
-          )}
+          {isDarkMode ? <Sun className="w-5 h-5 transition-transform" /> : <Moon className="w-5 h-5 transition-transform" />}
           <span className="font-medium text-sm">Cambiar Tema</span>
         </button>
 
@@ -150,11 +142,11 @@ export function Sidebar() {
           className="w-full"
         >
           <div className="sahara-card p-4 flex items-center gap-3 bg-background group cursor-pointer hover:border-red-500/30 transition-all duration-300">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-              LM
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold uppercase">
+              {userEmail ? userEmail.charAt(0) : 'U'}
             </div>
             <div className="flex-1 overflow-hidden text-left">
-              <p className="text-sm font-bold text-foreground truncate">Luciano M.</p>
+              <p className="text-[10px] font-bold text-foreground truncate" title={userEmail || ''}>{userEmail || 'Usuario'}</p>
               <p className="text-[10px] text-secondary truncate">Cerrar Sesión</p>
             </div>
           </div>
