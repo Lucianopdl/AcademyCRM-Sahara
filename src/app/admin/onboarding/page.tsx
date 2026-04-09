@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { DashboardShell } from "@/components/dashboard-shell";
-import { createNewAcademyAction } from "./actions";
 import { 
   ShieldCheck, 
   UserPlus, 
@@ -16,13 +15,21 @@ import {
   Trash2,
   Lock,
   Unlock,
-  ExternalLink
+  ExternalLink,
+  Pencil,
+  Save,
+  XCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabase-admin"; // Warning: only for logic if we move this to a server action
-import { toggleAcademyStatusAction } from "./actions"; // We will create this
+import { 
+  createNewAcademyAction, 
+  toggleAcademyStatusAction,
+  updateAcademyNameAction,
+  deleteAcademyAction
+} from "./actions";
 
 export default function OnboardingPage() {
   const [loading, setLoading] = useState(false);
@@ -30,6 +37,8 @@ export default function OnboardingPage() {
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const [managedAcademies, setManagedAcademies] = useState<any[]>([]);
   const [loadingAcademies, setLoadingAcademies] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
 
   // Cargar academias para gestión
   async function fetchAcademies() {
@@ -60,6 +69,28 @@ export default function OnboardingPage() {
       fetchAcademies();
     } else {
       alert("Error: " + res.message);
+    }
+  }
+
+  async function handleUpdateName(id: string) {
+    if (!editName.trim()) return;
+    const res = await updateAcademyNameAction(id, editName);
+    if (res.success) {
+      setEditingId(null);
+      fetchAcademies();
+    } else {
+      alert("Error: " + res.message);
+    }
+  }
+
+  async function handleDelete(id: string, name: string) {
+    if (window.confirm(`¿Estás SEGURO de eliminar la academia '${name}'? Esta acción borrará TODOS los datos asociados y no se puede deshacer.`)) {
+      const res = await deleteAcademyAction(id);
+      if (res.success) {
+        fetchAcademies();
+      } else {
+        alert("Error: " + res.message);
+      }
     }
   }
 
@@ -262,7 +293,20 @@ export default function OnboardingPage() {
                         )}>
                           {academy.name.charAt(0)}
                         </div>
-                        <span className="font-bold text-[#2D241E]">{academy.name}</span>
+                        {editingId === academy.id ? (
+                          <div className="flex items-center gap-2">
+                            <input 
+                              value={editName}
+                              onChange={(e) => setEditName(e.target.value)}
+                              className="bg-[#F5F1EE] border-none rounded-lg px-3 py-2 text-sm font-bold w-48 outline-none ring-2 ring-[#E67E22]"
+                              autoFocus
+                            />
+                            <button onClick={() => handleUpdateName(academy.id)} className="text-emerald-600 hover:text-emerald-700"><Save className="w-5 h-5" /></button>
+                            <button onClick={() => setEditingId(null)} className="text-red-400 hover:text-red-500"><XCircle className="w-5 h-5" /></button>
+                          </div>
+                        ) : (
+                          <span className="font-bold text-[#2D241E]">{academy.name}</span>
+                        )}
                       </div>
                     </td>
                     <td className="py-6 px-4">
@@ -280,17 +324,35 @@ export default function OnboardingPage() {
                       </span>
                     </td>
                     <td className="py-6 px-4 text-right">
-                      <Button
-                        onClick={() => handleToggleStatus(academy.id, academy.status)}
-                        className={cn(
-                          "h-10 px-4 rounded-xl font-bold text-xs transition-all flex items-center gap-2 ml-auto shadow-sm",
-                          academy.status === 'active' 
-                            ? "bg-white border border-red-200 text-red-500 hover:bg-red-50" 
-                            : "bg-[#2D241E] text-white hover:bg-black"
+                      <div className="flex items-center justify-end gap-2">
+                        {editingId !== academy.id && (
+                          <button 
+                            onClick={() => { setEditingId(academy.id); setEditName(academy.name); }}
+                            className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Editar nombre"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
                         )}
-                      >
-                        {academy.status === 'active' ? <><Lock className="w-3.5 h-3.5" /> Suspender</> : <><Unlock className="w-3.5 h-3.5" /> Activar</>}
-                      </Button>
+                        <Button
+                          onClick={() => handleToggleStatus(academy.id, academy.status)}
+                          className={cn(
+                            "h-9 px-3 rounded-xl font-bold text-[11px] transition-all flex items-center gap-2 shadow-sm",
+                            academy.status === 'active' 
+                              ? "bg-white border border-red-200 text-red-500 hover:bg-red-50" 
+                              : "bg-[#2D241E] text-white hover:bg-black"
+                          )}
+                        >
+                          {academy.status === 'active' ? <><Lock className="w-3 h-3" /> Suspender</> : <><Unlock className="w-3 h-3" /> Activar</>}
+                        </Button>
+                        <button 
+                          onClick={() => handleDelete(academy.id, academy.name)}
+                          className="p-2 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors ml-1"
+                          title="Eliminar permanentemente"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

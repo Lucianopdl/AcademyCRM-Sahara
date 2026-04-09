@@ -86,6 +86,39 @@ export async function toggleAcademyStatusAction(academyId: string, newStatus: 'a
   }
 }
 
+export async function updateAcademyNameAction(academyId: string, newName: string) {
+  try {
+    const { error } = await supabaseAdmin
+      .from('academies')
+      .update({ name: newName })
+      .eq('id', academyId);
+
+    if (error) throw error;
+    revalidatePath("/admin/onboarding");
+    return { success: true, message: "Nombre actualizado correctamente" };
+  } catch (error: any) {
+    return { success: false, message: error.message };
+  }
+}
+
+export async function deleteAcademyAction(academyId: string) {
+  try {
+    // Nota: El borrado en cascada debe estar configurado en la DB.
+    // Si no, tendremos que borrar manualmente alumnos, pagos, etc.
+    const { error } = await supabaseAdmin
+      .from('academies')
+      .delete()
+      .eq('id', academyId);
+
+    if (error) throw error;
+    
+    revalidatePath("/admin/onboarding");
+    return { success: true, message: "Academia eliminada permanentemente" };
+  } catch (error: any) {
+    return { success: false, message: error.message };
+  }
+}
+
 export async function checkAcademyStatusAction(academyId: string) {
   try {
     const { data, error } = await supabaseAdmin
