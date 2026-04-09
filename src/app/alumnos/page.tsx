@@ -1455,7 +1455,7 @@ _Sahara · Gestión Académica_`);
                 <Button 
                   onClick={handleBulkDelete}
                   disabled={isBulkLoading}
-                  variant="destructive"
+                  variant="ghost"
                   className="bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-2xl h-12 flex items-center gap-2 px-5 transition-all active:scale-95"
                 >
                   <Trash2 className="w-4 h-4" />
