@@ -316,55 +316,85 @@ export default function PagosPage() {
         </section>
 
         {/* Stats Grid - Sahara Style */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <motion.div 
-            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-[#2D241E] p-8 rounded-[40px] text-white shadow-2xl relative overflow-hidden group border border-white/5"
+            initial={{ opacity: 0, y: 10 }} 
+            whileHover={{ y: -5, scale: 1.02 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-[#1A1614] p-10 rounded-[48px] text-white shadow-[0_40px_80px_-20px_rgba(26,22,20,0.4)] relative overflow-hidden group border border-[#D4AF37]/20"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent opacity-50 group-hover:opacity-70 transition-opacity" />
-            <div className="relative z-10">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/10">
-                  <TrendingUp className="w-6 h-6 text-primary" />
+            <div className="absolute inset-0 bg-gradient-to-br from-[#D4AF37]/10 to-transparent opacity-50 group-hover:opacity-100 transition-opacity duration-700" />
+            <div className="relative z-10 flex flex-col justify-between h-full">
+              <div className="flex items-center gap-5 mb-10">
+                <div className="w-16 h-16 bg-[#D4AF37]/10 rounded-2xl flex items-center justify-center backdrop-blur-xl border border-[#D4AF37]/20">
+                  <TrendingUp className="w-8 h-8 text-[#D4AF37]" />
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50">Recaudación Total</span>
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#D4AF37]/60 block mb-1">Caja Central</span>
+                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/40">Recaudación Total</span>
+                </div>
               </div>
-              <h2 className="text-4xl font-black mb-1">${monthlyTotal.toLocaleString('es-AR')}</h2>
-              <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Balance del periodo seleccionado</p>
+              <div>
+                <h2 className="text-5xl font-serif font-black mb-2 tracking-tighter">${monthlyTotal.toLocaleString('es-AR')}</h2>
+                <div className="flex items-center gap-2 text-[10px] font-bold text-white/30 uppercase tracking-widest">
+                  <div className="w-1.5 h-1.5 bg-[#D4AF37] rounded-full animate-pulse" />
+                  Balance del periodo seleccionado
+                </div>
+              </div>
             </div>
-            <div className="absolute top-0 right-0 p-8 opacity-5">
-              <DollarSign className="w-32 h-32 translate-x-10 -translate-y-10 group-hover:scale-110 transition-transform duration-700" />
+            <div className="absolute -top-10 -right-10 p-8 opacity-[0.03] pointer-events-none">
+              <DollarSign className="w-64 h-64 group-hover:scale-110 transition-transform duration-1000" />
             </div>
           </motion.div>
           
           <motion.div 
-            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="bg-white p-8 rounded-[40px] border border-[#E8E2DC] shadow-xl shadow-black/5 relative overflow-hidden group hover:border-primary/20 transition-all"
+            initial={{ opacity: 0, y: 10 }} 
+            whileHover={{ y: -5, scale: 1.02 }}
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ delay: 0.1 }}
+            className="bg-white p-10 rounded-[48px] border border-[#E8E2DC] shadow-[0_30px_60px_-15px_rgba(132,115,101,0.1)] relative overflow-hidden group hover:border-[#D4AF37]/30 transition-all duration-500"
           >
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 bg-[#F5F1EE] rounded-2xl flex items-center justify-center group-hover:bg-primary/5 transition-colors">
-                <Users className="w-6 h-6 text-[#847365] group-hover:text-primary transition-colors" />
+            <div className="flex flex-col justify-between h-full relative z-10">
+              <div className="flex items-center gap-5 mb-10">
+                <div className="w-16 h-16 bg-[#F5F1EE] rounded-2xl flex items-center justify-center group-hover:bg-[#D4AF37]/5 transition-colors border border-[#E8E2DC]/50">
+                  <Users className="w-8 h-8 text-[#847365] group-hover:text-[#D4AF37] transition-colors" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#847365]/40 block mb-1">Volumen</span>
+                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-[#2D241E]/60">Operaciones</span>
+                </div>
               </div>
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#847365]/60">Operaciones</span>
+              <div>
+                <h2 className="text-5xl font-serif font-black text-[#1A1614] mb-2 tracking-tighter">{payments.length}</h2>
+                <p className="text-[10px] font-bold text-[#847365]/40 uppercase tracking-widest">Cobros registrados con éxito</p>
+              </div>
             </div>
-            <h2 className="text-4xl font-black text-[#2D241E] mb-1">{payments.length}</h2>
-            <p className="text-[10px] font-bold text-[#847365]/40 uppercase tracking-widest">Cobros registrados</p>
           </motion.div>
-[diff_block_start]
+
           <motion.div 
-            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-            className="bg-white p-8 rounded-[40px] border border-[#E8E2DC] shadow-xl shadow-black/5 relative overflow-hidden group hover:border-primary/20 transition-all"
+            initial={{ opacity: 0, y: 10 }} 
+            whileHover={{ y: -5, scale: 1.02 }}
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ delay: 0.2 }}
+            className="bg-white p-10 rounded-[48px] border border-[#E8E2DC] shadow-[0_30px_60px_-15px_rgba(132,115,101,0.1)] relative overflow-hidden group hover:border-[#D4AF37]/30 transition-all duration-500"
           >
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 bg-[#F5F1EE] rounded-2xl flex items-center justify-center group-hover:bg-primary/5 transition-colors">
-                <Wallet className="w-6 h-6 text-[#847365] group-hover:text-primary transition-colors" />
+            <div className="flex flex-col justify-between h-full relative z-10">
+              <div className="flex items-center gap-5 mb-10">
+                <div className="w-16 h-16 bg-[#F5F1EE] rounded-2xl flex items-center justify-center group-hover:bg-[#D4AF37]/5 transition-colors border border-[#E8E2DC]/50">
+                  <Wallet className="w-8 h-8 text-[#847365] group-hover:text-[#D4AF37] transition-colors" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#847365]/40 block mb-1">Ticket</span>
+                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-[#2D241E]/60">Promedio x Alumno</span>
+                </div>
               </div>
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#847365]/60">Promedio x Alumno</span>
+              <div>
+                <h2 className="text-5xl font-serif font-black text-[#1A1614] mb-2 tracking-tighter">
+                  ${payments.length > 0 ? (monthlyTotal / payments.length).toLocaleString('es-AR', { maximumFractionDigits: 0 }) : 0}
+                </h2>
+                <p className="text-[10px] font-bold text-[#847365]/40 uppercase tracking-widest">Valor promedio transaccionado</p>
+              </div>
             </div>
-            <h2 className="text-4xl font-black text-[#2D241E] mb-1">
-              ${payments.length > 0 ? (monthlyTotal / payments.length).toLocaleString('es-AR', { maximumFractionDigits: 0 }) : 0}
-            </h2>
-            <p className="text-[10px] font-bold text-[#847365]/40 uppercase tracking-widest">Ticket promedio mensual</p>
           </motion.div>
         </div>
 
