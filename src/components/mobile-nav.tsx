@@ -14,7 +14,8 @@ import {
   GraduationCap,
   LogOut,
   X,
-  Bell
+  Bell,
+  ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -38,6 +39,15 @@ export function MobileNav() {
   const pathname = usePathname();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    async function getUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setUserEmail(user.email || null);
+    }
+    getUser();
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -93,6 +103,23 @@ export function MobileNav() {
                     <span className="text-sm font-semibold">{item.name}</span>
                   </Link>
                 ))}
+
+                {/* SUPER ADMIN MOBILE LINK */}
+                {userEmail === 'lucianopdl2401@gmail.com' && (
+                  <Link
+                    href="/admin/onboarding"
+                    onClick={() => setIsMenuOpen(false)}
+                    className={cn(
+                      "col-span-2 flex items-center justify-center gap-3 p-4 rounded-2xl transition-all font-bold border",
+                      pathname === "/admin/onboarding"
+                        ? "bg-[#E67E22]/20 text-[#E67E22] border-[#E67E22]/30"
+                        : "bg-[#E67E22]/5 text-[#E67E22] border-[#E67E22]/10"
+                    )}
+                  >
+                    <ShieldCheck className="w-5 h-5" />
+                    Panel Super Admin
+                  </Link>
+                )}
               </div>
 
               <button

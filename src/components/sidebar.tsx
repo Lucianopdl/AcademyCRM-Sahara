@@ -13,7 +13,9 @@ import {
   Moon,
   Sun,
   ClipboardCheck,
-  Wallet
+  Wallet,
+  ShieldCheck,
+  HandMetal
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -123,6 +125,25 @@ export function Sidebar() {
             </Link>
           );
         })}
+
+        {/* SECCION SUPER ADMIN - Solo para Luciano */}
+        {userEmail === 'lucianopdl2401@gmail.com' && (
+          <div className="mt-8 pt-8 border-t border-border/50">
+            <p className="px-4 text-[11px] font-bold text-[#E67E22] uppercase tracking-widest mb-4">Administración</p>
+            <Link
+              href="/admin/onboarding"
+              className={cn(
+                "group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300",
+                pathname === "/admin/onboarding" 
+                  ? "bg-[#E67E22]/10 text-[#E67E22]" 
+                  : "text-[#847365] hover:bg-[#E67E22]/5 hover:text-[#E67E22]"
+              )}
+            >
+              <ShieldCheck className="w-5 h-5" />
+              <span className="font-bold text-sm">Onboarding & Control</span>
+            </Link>
+          </div>
+        )}
       </nav>
 
       <div className="p-4 border-t border-border mt-auto">
