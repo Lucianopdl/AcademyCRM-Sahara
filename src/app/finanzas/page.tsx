@@ -226,247 +226,349 @@ export default function FinanzasPage() {
 
   return (
     <DashboardShell>
-      <div className="space-y-8 pb-20">
-        {/* Header Section */}
-        <section className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-serif font-bold tracking-tight">Finanzas</h1>
-            <p className="text-[#847365] font-medium opacity-80 mt-1">Control de ingresos, gastos y balance mensual.</p>
-          </div>
+      <div className="min-h-screen bg-[#FDFCFB]/50 selection:bg-[#D4AF37]/20">
+        <div className="space-y-12 pb-24 max-w-7xl mx-auto px-4 sm:px-8 pt-10">
           
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <div className="flex items-center justify-between bg-white border border-[#E8E2DC] rounded-2xl px-4 py-2 shadow-sm">
-              <button 
-                onClick={() => {
-                  const d = new Date(selectedMonth);
-                  d.setMonth(d.getMonth() - 1);
-                  setSelectedMonth(d);
-                }} 
-                className="p-2 hover:text-primary transition-colors"
-                aria-label="Mes anterior"
+          {/* Header Section: Premium & Balanced */}
+          <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-10">
+            <div className="space-y-4">
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="flex items-center gap-3"
               >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <span className="mx-4 font-black text-xs uppercase tracking-widest min-w-[140px] text-center">
-                {format(selectedMonth, 'MMMM yyyy', { locale: es })}
-              </span>
-              <button 
-                onClick={() => {
-                  const d = new Date(selectedMonth);
-                  d.setMonth(d.getMonth() + 1);
-                  setSelectedMonth(d);
-                }} 
-                className="p-2 hover:text-primary transition-colors"
-                aria-label="Mes siguiente"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
+                <div className="w-10 h-[2px] bg-[#D4AF37]" />
+                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-[#847365]/60">Gestión Financiera</span>
+              </motion.div>
+              <h1 className="text-4xl md:text-5xl font-serif font-black tracking-tighter text-[#1A1614] leading-tight">
+                Balance <span className="text-[#D4AF37] italic font-normal">&</span><br/>
+                Flujos de Caja
+              </h1>
+              <p className="text-[#847365] font-medium text-lg leading-relaxed max-w-xl opacity-70">
+                Monitoreo de liquidez y administración de activos en tiempo real.
+              </p>
             </div>
             
-            <Button 
-              onClick={() => setShowExpenseModal(true)} 
-              className="bg-primary hover:bg-primary/90 text-white h-12 px-6 rounded-2xl gap-2 shadow-lg shadow-primary/20 font-bold"
-            >
-              <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Registrar Gasto</span><span className="sm:hidden">Nuevo Gasto</span>
-            </Button>
-          </div>
-        </section>
-
-        {/* Stats Cards - Optimized for Mobile */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} 
-            className="bg-white p-6 md:p-8 rounded-[32px] md:rounded-[40px] border border-[#847365]/5 shadow-sm relative overflow-hidden group"
-          >
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-green-50 text-green-600 rounded-xl md:rounded-2xl flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 md:w-6 md:h-6" />
-              </div>
-              <span className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] text-[#847365]/60">Ingresos Totales</span>
-            </div>
-            <p className="text-2xl md:text-3xl font-black text-[#2D241E]">${totalIncome.toLocaleString('es-AR')}</p>
-            <div className="mt-4 flex items-center gap-2 text-green-600 text-[10px] font-black uppercase tracking-widest">
-              <ArrowUpRight className="w-3 h-3" /> Cobros realizados
-            </div>
-          </motion.div>
-
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="bg-white p-6 md:p-8 rounded-[32px] md:rounded-[40px] border border-[#847365]/5 shadow-sm relative overflow-hidden group"
-          >
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-red-50 text-red-600 rounded-xl md:rounded-2xl flex items-center justify-center">
-                <TrendingDown className="w-5 h-5 md:w-6 md:h-6" />
-              </div>
-              <span className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] text-[#847365]/60">Gastos Totales</span>
-            </div>
-            <p className="text-2xl md:text-3xl font-black text-[#2D241E]">${totalExpenses.toLocaleString('es-AR')}</p>
-            <div className="mt-4 flex items-center gap-2 text-red-600 text-[10px] font-black uppercase tracking-widest">
-              <ArrowDownRight className="w-3 h-3" /> Egresos registrados
-            </div>
-          </motion.div>
-
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-            className={cn(
-              "p-6 md:p-8 rounded-[32px] md:rounded-[40px] border shadow-sm relative overflow-hidden group col-span-1 sm:col-span-2 lg:col-span-1",
-              balance >= 0 ? "bg-[#2D241E] text-white border-transparent" : "bg-red-600 text-white border-transparent"
-            )}
-          >
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-white/10 rounded-xl md:rounded-2xl flex items-center justify-center">
-                <Wallet className="w-5 h-5 md:w-6 md:h-6" />
-              </div>
-              <span className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] text-white/50">Balance del Período</span>
-            </div>
-            <p className="text-2xl md:text-3xl font-black">${balance.toLocaleString('es-AR')}</p>
-            <div className="mt-4 flex items-center gap-2 text-white/40 text-[10px] font-black uppercase tracking-widest">
-               Resultado neto mensual
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Content Tabs/Sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Expenses List */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="flex items-center justify-between px-2">
-              <h3 className="text-lg md:text-xl font-serif font-bold flex items-center gap-3">
-                <Calendar className="w-5 h-5 text-primary" /> Movimientos
-              </h3>
-              <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-6">
+              {/* Period Selector: Elegant Precision */}
+              <div className="flex items-center bg-white border border-[#E8E2DC] shadow-[0_10px_30px_-10px_rgba(26,22,20,0.05)] rounded-[40px] p-2 transition-all duration-500 hover:border-[#D4AF37]/30 group/selector">
                 <button 
-                  onClick={() => setShowCategoryModal(true)} 
-                  className="hidden sm:flex text-[10px] font-black uppercase tracking-widest text-[#847365] hover:text-primary items-center gap-2 transition-colors"
+                  onClick={() => {
+                    const d = new Date(selectedMonth);
+                    d.setMonth(d.getMonth() - 1);
+                    setSelectedMonth(d);
+                  }} 
+                  className="w-12 h-12 flex items-center justify-center hover:bg-[#1A1614] hover:text-white rounded-full text-[#1A1614] transition-all duration-300 active:scale-90"
                 >
-                  <Tag className="w-4 h-4" /> Categorías
+                  <ChevronLeft className="w-5 h-5" />
                 </button>
-                <div className="bg-[#F5F1EE]/50 p-1 rounded-xl flex">
-                  <button className="p-2 bg-white rounded-lg shadow-sm text-primary"><List className="w-4 h-4" /></button>
-                  <button className="p-2 text-[#847365] opacity-40"><LayoutGrid className="w-4 h-4" /></button>
+                
+                <div className="px-8 flex flex-col items-center min-w-[200px]">
+                  <span className="text-[8px] font-black uppercase tracking-[0.4em] text-[#D4AF37] mb-1">Periodo Actual</span>
+                  <span className="font-serif font-black text-xl text-[#1A1614] capitalize tracking-tighter">
+                    {format(selectedMonth, 'MMMM yyyy', { locale: es })}
+                  </span>
+                </div>
+                
+                <button 
+                  onClick={() => {
+                    const d = new Date(selectedMonth);
+                    d.setMonth(d.getMonth() + 1);
+                    setSelectedMonth(d);
+                  }} 
+                  className="w-12 h-12 flex items-center justify-center hover:bg-[#1A1614] hover:text-white rounded-full text-[#1A1614] transition-all duration-300 active:scale-90"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <Button 
+                onClick={() => setShowExpenseModal(true)} 
+                className="bg-[#1A1614] hover:bg-black text-white h-16 px-10 rounded-[28px] gap-4 shadow-xl shadow-[#1A1614]/10 font-black text-xs uppercase tracking-[0.2em] active:scale-95 transition-all duration-500"
+              >
+                <Plus className="w-5 h-5 text-[#D4AF37]" />
+                <span>Nuevo Registro</span>
+              </Button>
+            </div>
+          </header>
+
+          {/* Status Dashboard: 3 Balanced Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Income Card */}
+            <motion.div 
+              whileHover={{ y: -5 }}
+              className="bg-white p-8 rounded-[40px] border border-[#E8E2DC]/60 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.03)] relative overflow-hidden group"
+            >
+              <div className="absolute -right-10 -top-10 w-32 h-32 bg-green-500/5 rounded-full blur-[40px]" />
+              <div className="relative z-10">
+                <div className="flex justify-between items-start mb-8">
+                  <div className="w-14 h-14 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center border border-green-100/50 shadow-sm">
+                    <ArrowUpRight className="w-7 h-7" />
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[#847365]/60 font-black text-[9px] uppercase tracking-[0.2em] mb-1">Entradas</p>
+                    <div className="flex items-center gap-1.5 text-green-600 font-bold text-[10px] uppercase">
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-600" />
+                      Ingresos
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-lg font-black text-[#D4AF37]">$</span>
+                    <span className="text-4xl font-serif font-black text-[#1A1614] tabular-nums tracking-tighter">
+                      {totalIncome.toLocaleString('es-AR')}
+                    </span>
+                  </div>
+                  <p className="text-[10px] font-bold text-[#847365]/40 uppercase tracking-widest">Recaudación Mensual</p>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
-            <div className="space-y-3">
-              {loading ? (
-                <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[32px] border border-[#847365]/5">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary/40 mb-4" />
-                  <p className="text-xs font-black uppercase tracking-widest text-[#847365]/40">Cargando movimientos...</p>
+            {/* Expenses Card */}
+            <motion.div 
+              whileHover={{ y: -5 }}
+              className="bg-white p-8 rounded-[40px] border border-[#E8E2DC]/60 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.03)] relative overflow-hidden group"
+            >
+              <div className="absolute -right-10 -top-10 w-32 h-32 bg-red-500/5 rounded-full blur-[40px]" />
+              <div className="relative z-10">
+                <div className="flex justify-between items-start mb-8">
+                  <div className="w-14 h-14 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center border border-red-100/50 shadow-sm">
+                    <ArrowDownRight className="w-7 h-7" />
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[#847365]/60 font-black text-[9px] uppercase tracking-[0.2em] mb-1">{expenses.length} Transacciones</p>
+                    <div className="flex items-center gap-1.5 text-red-600 font-bold text-[10px] uppercase">
+                      <div className="w-1.5 h-1.5 rounded-full bg-red-600" />
+                      Egresos
+                    </div>
+                  </div>
                 </div>
-              ) : expenses.length === 0 ? (
-                <div className="text-center py-20 text-[#847365]/40 font-medium bg-[#F5F1EE]/30 rounded-[32px] border border-dashed border-[#847365]/10 px-6">
-                  <p className="font-serif italic text-lg mb-1">Sin registros</p>
-                  <p className="text-xs font-black uppercase tracking-widest">No hay gastos para este período.</p>
+                <div className="space-y-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-lg font-black text-red-500">-$</span>
+                    <span className="text-4xl font-serif font-black text-[#1A1614] tabular-nums tracking-tighter">
+                      {totalExpenses.toLocaleString('es-AR')}
+                    </span>
+                  </div>
+                  <p className="text-[10px] font-bold text-[#847365]/40 uppercase tracking-widest">Gastos Operativos</p>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-3">
-                  {expenses.map((expense) => (
+              </div>
+            </motion.div>
+
+            {/* Balance Card: The Luxury Accent */}
+            <motion.div 
+              whileHover={{ y: -5 }}
+              className={cn(
+                "p-8 rounded-[40px] border shadow-[0_30px_70px_-20px] relative overflow-hidden group transition-all duration-500",
+                balance >= 0 
+                  ? "bg-[#1A1614] text-white border-[#D4AF37]/30 shadow-[#1A1614]/30" 
+                  : "bg-red-800 text-white border-white/20 shadow-red-800/30"
+              )}
+            >
+              <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-[#D4AF37]/10 rounded-full blur-[50px]" />
+              <div className="relative z-10 h-full flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-8">
+                    <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-xl border border-white/10">
+                      <Wallet className="w-7 h-7 text-[#D4AF37]" />
+                    </div>
+                    <div className={cn(
+                      "px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border",
+                      balance >= 0 ? "bg-[#D4AF37]/20 border-[#D4AF37]/40 text-[#D4AF37]" : "bg-black/40 border-white/10 text-white"
+                    )}>
+                      {balance >= 0 ? "Excedente" : "Déficit"}
+                    </div>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-serif font-black tabular-nums tracking-tighter">
+                      {balance.toLocaleString('es-AR')}
+                    </span>
+                    <span className="text-lg font-bold opacity-40">$</span>
+                  </div>
+                </div>
+                
+                <div className="mt-8 space-y-3">
+                  <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
                     <motion.div 
-                      key={expense.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="flex items-center justify-between p-4 md:p-5 bg-white border border-[#E8E2DC] rounded-[24px] md:rounded-3xl hover:border-primary/20 transition-all group"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${expense.expense_categories?.color || '#847365'}15`, color: expense.expense_categories?.color || '#847365' }}>
-                          <TrendingDown className="w-5 h-5 md:w-6 md:h-6" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-bold text-sm md:text-base text-[#2D241E] truncate">{expense.description}</p>
-                          <div className="flex items-center gap-2 text-[9px] md:text-[10px] font-black uppercase tracking-widest text-[#847365]/60">
-                            <span className="shrink-0">{format(new Date(expense.date), 'dd MMM', { locale: es })}</span>
-                            <span className="w-1 h-1 bg-[#847365]/20 rounded-full shrink-0" />
-                            <span style={{ color: expense.expense_categories?.color }} className="truncate">{expense.expense_categories?.name || 'Varios'}</span>
+                      initial={{ width: 0 }}
+                      animate={{ width: balance >= 0 ? "100%" : "30%" }}
+                      className={cn("h-full rounded-full", balance >= 0 ? "bg-[#D4AF37]" : "bg-white")}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between opacity-30 text-[8px] font-black uppercase tracking-[0.3em]">
+                    <span>Performance Operativa</span>
+                    <span>100% Auditado</span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Activity Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+            
+            {/* Movement Ledger */}
+            <div className="lg:col-span-8 space-y-10">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 px-2">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2.5 h-8 bg-[#D4AF37] rounded-full" />
+                    <h2 className="text-2xl font-serif font-black text-[#1A1614] tracking-tighter">Actividad Reciente</h2>
+                  </div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#847365]/50 ml-5.5">Historial de egresos liquidados</p>
+                </div>
+                
+                <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-[#E8E2DC] shadow-sm">
+                  <button className="p-2.5 bg-[#1A1614] rounded-xl text-white shadow-lg"><List className="w-4 h-4" /></button>
+                  <button className="p-2.5 text-[#847365]/30 hover:text-[#1A1614] transition-all"><LayoutGrid className="w-4 h-4" /></button>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center py-24 bg-white/50 rounded-[40px] border border-[#E8E2DC] border-dashed">
+                    <Loader2 className="w-8 h-8 animate-spin text-[#D4AF37]" />
+                    <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-[#847365]/40">Cargando Libro Mayor...</p>
+                  </div>
+                ) : expenses.length === 0 ? (
+                  <div className="text-center py-24 bg-white/50 rounded-[40px] border border-[#E8E2DC] border-dashed">
+                    <TrendingDown className="w-12 h-12 text-[#847365]/10 mx-auto mb-4" />
+                    <p className="text-[10px] font-black uppercase tracking-widest text-[#847365]/40">No hay movimientos registrados</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {expenses.map((expense, idx) => (
+                      <motion.div 
+                        key={expense.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="group flex flex-col sm:flex-row sm:items-center justify-between p-6 bg-white border border-[#E8E2DC]/80 rounded-[32px] hover:shadow-xl hover:border-[#D4AF37]/30 transition-all duration-500"
+                      >
+                        <div className="flex items-center gap-6">
+                          <div 
+                            className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm border-2 border-white" 
+                            style={{ backgroundColor: `${expense.expense_categories?.color || '#F5F1EE'}15`, color: expense.expense_categories?.color || '#1A1614' }}
+                          >
+                            <ArrowDownRight className="w-7 h-7" />
+                          </div>
+                          <div>
+                            <p className="font-serif font-black text-[#1A1614] text-xl truncate tracking-tight">{expense.description}</p>
+                            <div className="flex items-center gap-4 mt-2">
+                              <span className="text-[9px] font-black uppercase tracking-widest text-[#847365]/60 flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 opacity-30" />
+                                {format(new Date(expense.date), 'dd MMM, yyyy', { locale: es })}
+                              </span>
+                              <div 
+                                className="px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest"
+                                style={{ backgroundColor: `${expense.expense_categories?.color || '#847365'}10`, color: expense.expense_categories?.color || '#847365' }}
+                              >
+                                {expense.expense_categories?.name || 'Varios'}
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2 md:gap-4 shrink-0">
-                        <p className="font-black text-base md:text-lg text-red-600">-${expense.amount.toLocaleString('es-AR')}</p>
-                        <button 
-                          onClick={() => handleDeleteExpense(expense.id)} 
-                          className="p-2 text-[#847365]/20 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                          aria-label="Eliminar gasto"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Sidebar Area: Category Breakdown & Actions */}
-          <div className="space-y-6">
-            {/* By Category Section */}
-            <section className="bg-[#2D241E] rounded-[32px] md:rounded-[40px] p-6 md:p-8 text-white relative overflow-hidden">
-              <div className="absolute right-0 top-0 w-32 h-32 bg-primary/20 rounded-full blur-3xl opacity-50" />
-              <h3 className="relative z-10 text-lg md:text-xl font-serif font-bold mb-6 flex items-center gap-3">
-                <PieChart className="w-5 h-5 text-primary" /> Distribución
-              </h3>
-              <div className="relative z-10 space-y-6">
-                 {categories.map(cat => {
-                    const catExpenses = expenses.filter(e => e.category_id === cat.id);
-                    const amount = catExpenses.reduce((sum, e) => sum + e.amount, 0);
-                    const percentage = totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0;
-                    
-                    if (amount === 0) return null;
-
-                    return (
-                      <div key={cat.id} className="space-y-2">
-                        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
-                          <span style={{ color: cat.color }}>{cat.name}</span>
-                          <span className="text-white/40">{percentage.toFixed(0)}%</span>
+                        
+                        <div className="flex items-center justify-between sm:justify-end gap-10 mt-6 sm:mt-0 pt-6 sm:pt-0 border-t sm:border-t-0 border-[#F5F1EE]">
+                          <div className="text-left sm:text-right">
+                            <p className="font-serif font-black text-3xl text-red-600 tracking-tighter">
+                              <span className="text-sm mr-1.5 opacity-30">$</span>
+                              {expense.amount.toLocaleString('es-AR')}
+                            </p>
+                            <p className="text-[8px] font-black text-[#847365]/30 uppercase tracking-[0.2em]">{expense.payment_method}</p>
+                          </div>
+                          <button 
+                            onClick={() => handleDeleteExpense(expense.id)} 
+                            className="p-3 text-[#847365]/20 hover:text-red-500 hover:bg-red-50 rounded-full transition-all active:scale-90"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
                         </div>
-                        <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                           <motion.div 
-                              initial={{ width: 0 }} 
-                              animate={{ width: `${percentage}%` }} 
-                              className="h-full rounded-full" 
-                              style={{ backgroundColor: cat.color }} 
-                           />
-                        </div>
-                        <div className="text-right text-xs font-bold text-white/60">
-                          ${amount.toLocaleString('es-AR')}
-                        </div>
-                      </div>
-                    )
-                 })}
-                 
-                 {totalExpenses === 0 && (
-                   <p className="text-white/30 text-[10px] font-black uppercase tracking-widest text-center py-4">
-                     Sin datos para graficar
-                   </p>
-                 )}
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
               </div>
-            </section>
+            </div>
 
-            {/* Quick Actions */}
-            <section className="bg-white rounded-[32px] md:rounded-[40px] border border-[#847365]/5 shadow-sm p-6 md:p-8">
-               <h3 className="text-lg font-serif font-bold mb-6">Acciones</h3>
-               <div className="grid grid-cols-1 gap-3">
-                  <button 
-                    onClick={() => setShowCategoryModal(true)} 
-                    className="flex items-center gap-3 p-4 bg-[#F5F1EE]/30 hover:bg-primary/5 rounded-2xl text-[#847365] hover:text-primary transition-all group"
-                  >
-                     <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm group-hover:shadow-md transition-all">
-                        <Tag className="w-5 h-5 opacity-40 group-hover:opacity-100" />
-                     </div>
-                     <span className="text-sm font-bold">Gestionar Categorías</span>
-                  </button>
-                  <button 
-                    onClick={() => setShowReportModal(true)} 
-                    className="flex items-center gap-3 p-4 bg-[#F5F1EE]/30 hover:bg-primary/5 rounded-2xl text-[#847365] hover:text-primary transition-all group"
-                  >
-                     <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm group-hover:shadow-md transition-all">
-                        <FileText className="w-5 h-5 opacity-40 group-hover:opacity-100" />
-                     </div>
-                     <span className="text-sm font-bold">Informe Mensual</span>
-                  </button>
-               </div>
-            </section>
+            {/* Sidebar Intelligence */}
+            <div className="lg:col-span-4 space-y-10 lg:sticky lg:top-10">
+              
+              {/* Allocation Section */}
+              <section className="bg-[#1A1614] rounded-[48px] p-8 text-white shadow-2xl relative overflow-hidden">
+                <div className="absolute -right-10 -top-10 w-32 h-32 bg-[#D4AF37]/5 rounded-full blur-[40px]" />
+                <div className="relative z-10 space-y-8">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[8px] font-black uppercase tracking-[0.6em] text-[#D4AF37] opacity-60">Insight</span>
+                      <h2 className="text-2xl font-serif font-black tracking-tighter">Distribución</h2>
+                    </div>
+                    <PieChart className="w-8 h-8 text-[#D4AF37] opacity-30" />
+                  </div>
+
+                  <div className="space-y-6">
+                    {categories.map(cat => {
+                        const amount = expenses.filter(e => e.category_id === cat.id).reduce((sum, e) => sum + e.amount, 0);
+                        const percentage = totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0;
+                        if (amount === 0) return null;
+
+                        return (
+                          <div key={cat.id} className="space-y-2">
+                            <div className="flex justify-between items-end">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
+                                <span className="text-[10px] font-black uppercase text-white/60 tracking-widest">{cat.name}</span>
+                              </div>
+                              <span className="text-lg font-serif font-black tracking-tighter">${amount.toLocaleString('es-AR')}</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                               <motion.div 
+                                  initial={{ width: 0 }} 
+                                  animate={{ width: `${percentage}%` }} 
+                                  className="h-full rounded-full" 
+                                  style={{ backgroundColor: cat.color }} 
+                               />
+                            </div>
+                          </div>
+                        )
+                    })}
+                  </div>
+                </div>
+              </section>
+
+              {/* Tools Section */}
+              <section className="bg-white rounded-[48px] border border-[#E8E2DC] p-8 space-y-6">
+                 <h2 className="text-xl font-serif font-black text-[#1A1614] tracking-tighter border-b border-[#F5F1EE] pb-4">Estrategia</h2>
+                 
+                 <div className="space-y-3">
+                    <button 
+                      onClick={() => setShowCategoryModal(true)} 
+                      className="w-full flex items-center justify-between p-4 bg-[#F5F1EE]/50 hover:bg-[#1A1614] group rounded-2xl transition-all duration-300"
+                    >
+                       <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center group-hover:bg-[#D4AF37] transition-all">
+                             <Tag className="w-5 h-5 text-[#1A1614]" />
+                          </div>
+                          <span className="text-sm font-black text-[#1A1614] group-hover:text-white transition-colors">Categorías</span>
+                       </div>
+                       <ChevronRight className="w-5 h-5 text-[#847365] group-hover:text-white" />
+                    </button>
+                    
+                    <button 
+                      onClick={() => setShowReportModal(true)} 
+                      className="w-full flex items-center justify-between p-4 bg-[#D4AF37]/5 hover:bg-[#D4AF37] group rounded-2xl transition-all duration-300"
+                    >
+                       <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center">
+                             <FileText className="w-5 h-5 text-[#D4AF37]" />
+                          </div>
+                          <span className="text-sm font-black text-[#1A1614]">Generar PDF</span>
+                       </div>
+                       <ArrowUpRight className="w-5 h-5 text-[#D4AF37] group-hover:text-[#1A1614]" />
+                    </button>
+                 </div>
+              </section>
+            </div>
           </div>
         </div>
       </div>
@@ -562,53 +664,58 @@ export default function FinanzasPage() {
         )}
       </AnimatePresence>
 
-      {/* Expense Modal */}
+      {/* Expense Modal: Premium Dark Blur */}
       <AnimatePresence>
         {showExpenseModal && (
           <div className="fixed inset-0 z-[110] flex items-end md:items-center justify-center p-0 md:p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowExpenseModal(false)} className="absolute inset-0 bg-[#2D241E]/40 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowExpenseModal(false)} className="absolute inset-0 bg-[#2D241E]/60 backdrop-blur-xl" />
             <motion.div 
               initial={{ y: "100%", opacity: 0 }} 
               animate={{ y: 0, opacity: 1 }} 
               exit={{ y: "100%", opacity: 0 }} 
-              className="relative bg-[#FDFCFB] w-full max-w-lg rounded-t-[32px] md:rounded-[40px] shadow-2xl p-8 md:p-10 overflow-hidden"
+              className="relative bg-[#FDFCFB] w-full max-w-xl rounded-t-[48px] md:rounded-[56px] shadow-3xl p-10 md:p-14 overflow-hidden border-t-4 border-[#D4AF37]"
             >
-               <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-xl md:text-2xl font-serif font-bold">Registrar Gasto</h3>
-                  <button onClick={() => setShowExpenseModal(false)} className="p-2 hover:bg-red-50 rounded-full text-[#847365]/40 hover:text-red-500 transition-all">
-                    <XCircle className="w-6 h-6" />
+               <div className="flex items-center justify-between mb-12">
+                  <div>
+                    <h3 className="text-3xl font-serif font-black text-[#2D241E]">Registrar Egreso</h3>
+                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#847365]/60 mt-2">Completa los detalles de la transacción</p>
+                  </div>
+                  <button onClick={() => setShowExpenseModal(false)} className="w-12 h-12 flex items-center justify-center hover:bg-red-50 rounded-full text-[#847365]/40 hover:text-red-500 transition-all">
+                    <XCircle className="w-8 h-8" />
                   </button>
                </div>
 
-               <form onSubmit={handleAddExpense} className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-[#847365]/60 ml-4">Descripción</label>
-                    <input required value={expenseForm.description} onChange={e => setExpenseForm({...expenseForm, description: e.target.value})} className="w-full h-14 bg-white border border-[#E8E2DC] rounded-2xl px-5 font-bold focus:ring-4 focus:ring-primary/10 shadow-sm transition-all" placeholder="Ej: Pago de luz, Alquiler..." />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-[#847365]/60 ml-4">Monto ($)</label>
-                      <input type="number" step="0.01" required value={expenseForm.amount} onChange={e => setExpenseForm({...expenseForm, amount: e.target.value})} className="w-full h-14 bg-white border border-[#E8E2DC] rounded-2xl px-5 font-bold focus:ring-4 focus:ring-primary/10 shadow-sm" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-[#847365]/60 ml-4">Fecha</label>
-                      <input type="date" required value={expenseForm.date} onChange={e => setExpenseForm({...expenseForm, date: e.target.value})} className="w-full h-14 bg-white border border-[#E8E2DC] rounded-2xl px-5 font-bold focus:ring-4 focus:ring-primary/10 shadow-sm" />
+               <form onSubmit={handleAddExpense} className="space-y-8">
+                  <div className="space-y-3">
+                    <label className="text-[11px] font-black uppercase tracking-[0.3em] text-[#847365]/60 ml-5">Concepto del Gasto</label>
+                    <div className="relative">
+                      <input required value={expenseForm.description} onChange={e => setExpenseForm({...expenseForm, description: e.target.value})} className="w-full h-18 bg-white border-2 border-[#E8E2DC]/50 rounded-[28px] px-8 font-black text-lg focus:border-[#D4AF37] focus:ring-8 focus:ring-[#D4AF37]/5 shadow-sm transition-all outline-none placeholder:text-[#847365]/20" placeholder="Ej: Insumos de oficina" />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-[#847365]/60 ml-4">Categoría</label>
-                    <select value={expenseForm.category_id} onChange={e => setExpenseForm({...expenseForm, category_id: e.target.value})} className="w-full h-14 bg-white border border-[#E8E2DC] rounded-2xl px-5 font-bold focus:ring-4 focus:ring-primary/10 shadow-sm">
-                       <option value="">Otras Categorías</option>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <label className="text-[11px] font-black uppercase tracking-[0.3em] text-[#847365]/60 ml-5">Importe ($)</label>
+                      <input type="number" step="0.01" required value={expenseForm.amount} onChange={e => setExpenseForm({...expenseForm, amount: e.target.value})} className="w-full h-18 bg-white border-2 border-[#E8E2DC]/50 rounded-[28px] px-8 font-black text-xl focus:border-[#D4AF37] focus:ring-8 focus:ring-[#D4AF37]/5 shadow-sm outline-none" placeholder="0.00" />
+                    </div>
+                    <div className="space-y-3">
+                      <label className="text-[11px] font-black uppercase tracking-[0.3em] text-[#847365]/60 ml-5">Fecha</label>
+                      <input type="date" required value={expenseForm.date} onChange={e => setExpenseForm({...expenseForm, date: e.target.value})} className="w-full h-18 bg-white border-2 border-[#E8E2DC]/50 rounded-[28px] px-8 font-black focus:border-[#D4AF37] outline-none shadow-sm" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[11px] font-black uppercase tracking-[0.3em] text-[#847365]/60 ml-5">Categoría Estratégica</label>
+                    <select value={expenseForm.category_id} onChange={e => setExpenseForm({...expenseForm, category_id: e.target.value})} className="w-full h-18 bg-white border-2 border-[#E8E2DC]/50 rounded-[28px] px-8 font-black text-[#2D241E] focus:border-[#D4AF37] outline-none shadow-sm appearance-none">
+                       <option value="">Clasificación General</option>
                        {categories.map(cat => (
                          <option key={cat.id} value={cat.id}>{cat.name}</option>
                        ))}
                     </select>
                   </div>
 
-                  <Button disabled={saving} type="submit" className="w-full bg-primary text-white h-16 rounded-[24px] font-black text-lg shadow-xl shadow-primary/20 active:scale-95 transition-all mt-4">
-                    {saving ? <Loader2 className="w-6 h-6 animate-spin mx-auto" /> : "Guardar Registro"}
+                  <Button disabled={saving} type="submit" className="w-full bg-[#2D241E] hover:bg-black text-white h-20 rounded-[32px] font-black text-xl shadow-2xl shadow-[#2D241E]/20 active:scale-95 transition-all mt-6 uppercase tracking-[0.2em]">
+                    {saving ? <Loader2 className="w-8 h-8 animate-spin mx-auto text-[#D4AF37]" /> : "Confirmar Movimiento"}
                   </Button>
                </form>
             </motion.div>
@@ -616,39 +723,39 @@ export default function FinanzasPage() {
         )}
       </AnimatePresence>
 
-      {/* Category Modal */}
+      {/* Category Modal: Minimalist Focus */}
       <AnimatePresence>
         {showCategoryModal && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowCategoryModal(false)} className="absolute inset-0 bg-[#2D241E]/40 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowCategoryModal(false)} className="absolute inset-0 bg-[#2D241E]/80 backdrop-blur-md" />
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }} 
               animate={{ scale: 1, opacity: 1 }} 
               exit={{ scale: 0.9, opacity: 0 }} 
-              className="relative bg-[#FDFCFB] w-full max-w-sm rounded-[40px] shadow-2xl p-10 overflow-hidden"
+              className="relative bg-[#FDFCFB] w-full max-w-md rounded-[56px] shadow-3xl p-12 overflow-hidden border border-[#D4AF37]/20"
             >
-               <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-xl font-serif font-bold">Nueva Categoría</h3>
-                  <button onClick={() => setShowCategoryModal(false)} className="p-2 hover:bg-red-50 rounded-full text-[#847365]/40 hover:text-red-500 transition-all"><XCircle className="w-6 h-6" /></button>
+               <div className="flex items-center justify-between mb-10">
+                  <h3 className="text-2xl font-serif font-black text-[#2D241E]">Nueva Categoría</h3>
+                  <button onClick={() => setShowCategoryModal(false)} className="w-10 h-10 flex items-center justify-center hover:bg-red-50 rounded-full text-[#847365]/20 hover:text-red-500 transition-all"><XCircle className="w-7 h-7" /></button>
                </div>
 
-               <form onSubmit={handleAddCategory} className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-[#847365]/60 ml-4">Nombre</label>
-                    <input required value={categoryForm.name} onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} className="w-full h-14 bg-white border border-[#E8E2DC] rounded-2xl px-5 font-bold focus:ring-4 focus:ring-primary/10 shadow-sm" placeholder="Ej: Sueldos, Alquiler..." />
+               <form onSubmit={handleAddCategory} className="space-y-8">
+                  <div className="space-y-3">
+                    <label className="text-[11px] font-black uppercase tracking-[0.3em] text-[#847365]/60 ml-5">Nombre Identificador</label>
+                    <input required value={categoryForm.name} onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} className="w-full h-16 bg-white border-2 border-[#E8E2DC]/50 rounded-[28px] px-8 font-black focus:border-[#D4AF37] outline-none shadow-sm" placeholder="Ej: Publicidad Digital" />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-[#847365]/60 ml-4">Color Distintivo</label>
-                    <div className="flex flex-wrap gap-2.5 p-2">
-                       {["#E67E22", "#E74C3C", "#2ECC71", "#3498DB", "#9B59B6", "#F1C40F", "#2D241E", "#34495E"].map(c => (
-                         <button key={c} type="button" onClick={() => setCategoryForm({...categoryForm, color: c})} className={cn("w-9 h-9 rounded-full border-2 transition-all", categoryForm.color === c ? "border-primary scale-110 shadow-md ring-4 ring-primary/5" : "border-transparent opacity-60 hover:opacity-100")} style={{ backgroundColor: c }} />
+                  <div className="space-y-4">
+                    <label className="text-[11px] font-black uppercase tracking-[0.3em] text-[#847365]/60 ml-5">Código de Color</label>
+                    <div className="flex flex-wrap gap-4 p-2">
+                       {["#E67E22", "#E74C3C", "#2ECC71", "#3498DB", "#9B59B6", "#F1C40F", "#2D241E", "#D4AF37"].map(c => (
+                         <button key={c} type="button" onClick={() => setCategoryForm({...categoryForm, color: c})} className={cn("w-10 h-10 rounded-2xl border-2 transition-all duration-300 transform", categoryForm.color === c ? "border-[#D4AF37] scale-125 shadow-xl ring-4 ring-[#D4AF37]/10" : "border-transparent opacity-40 hover:opacity-100 hover:scale-110")} style={{ backgroundColor: c }} />
                        ))}
                     </div>
                   </div>
 
-                  <Button disabled={saving} type="submit" className="w-full bg-[#2D241E] text-white h-14 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl active:scale-95 transition-all">
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Crear Categoría"}
+                  <Button disabled={saving} type="submit" className="w-full bg-[#2D241E] text-white h-16 rounded-[28px] font-black text-sm uppercase tracking-[0.3em] shadow-xl hover:shadow-[#D4AF37]/10 active:scale-95 transition-all">
+                    {saving ? <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#D4AF37]" /> : "Crear Clasificación"}
                   </Button>
                </form>
             </motion.div>

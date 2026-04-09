@@ -38,11 +38,18 @@ import {
   Share2,
   MessageCircle,
   Receipt,
-  Download
+  Download,
+  Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { ExcelImporter } from "@/components/excel-importer";
+import { 
+  cleanupAcademyDataAction, 
+  bulkDeleteStudentsAction, 
+  bulkUpdateStatusAction 
+} from "./actions";
 
 interface Student {
   id: string;
@@ -93,6 +100,8 @@ export default function AlumnosPage() {
   
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkLoading, setIsBulkLoading] = useState(false);
+  const [academyId, setAcademyId] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   const [invoiceData, setInvoiceData] = useState<{
     isOpen: boolean;
@@ -184,6 +193,32 @@ export default function AlumnosPage() {
 
   useEffect(() => {
     fetchInitialData();
+    
+    // Obtener info del usuario y academia
+    const getUserContext = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserEmail(user.email || null);
+        
+        // Intentar primero desde metadata (más rápido y seguro)
+        const metaAcademyId = user.user_metadata?.academy_id;
+        if (metaAcademyId) {
+          console.log("Academy ID from metadata:", metaAcademyId);
+          setAcademyId(metaAcademyId);
+        } else {
+          // Fallback al perfil si no está en metadata
+          console.log("No academy_id in metadata, checking user_profiles...");
+          const { data: profile } = await supabase.from('user_profiles').select('academy_id').eq('id', user.id).single();
+          if (profile) {
+            console.log("Academy ID from profiles:", profile.academy_id);
+            setAcademyId(profile.academy_id);
+          } else {
+            console.warn("No academy_id found for user.");
+          }
+        }
+      }
+    };
+    getUserContext();
   }, []);
 
   const handleAddStudent = async (e: React.FormEvent) => {
@@ -511,6 +546,40 @@ export default function AlumnosPage() {
     setIsBulkLoading(false);
   };
 
+  const handleBulkDelete = async () => {
+    if (!selectedIds.length) return;
+    
+    const executeDelete = async () => {
+      setIsBulkLoading(true);
+      const res = await bulkDeleteStudentsAction(selectedIds);
+      if (res.success) {
+        showAlert("Eliminación Exitosa", res.message, "success");
+        setSelectedIds([]);
+        fetchInitialData();
+      } else {
+        showAlert("Error", res.message, "error");
+      }
+      setIsBulkLoading(false);
+    };
+
+    showConfirm("Eliminar Selección", `¿Estás seguro de eliminar permanentemente a los ${selectedIds.length} alumnos seleccionados?`, executeDelete);
+  };
+
+  const handleBulkArchive = async (status: 'active' | 'archived') => {
+    if (!selectedIds.length) return;
+    
+    setIsBulkLoading(true);
+    const res = await bulkUpdateStatusAction(selectedIds, status);
+    if (res.success) {
+      showAlert("Éxito", res.message, "success");
+      setSelectedIds([]);
+      fetchInitialData();
+    } else {
+      showAlert("Error", res.message, "error");
+    }
+    setIsBulkLoading(false);
+  };
+
   const toggleSelectAll = () => {
     if (selectedIds.length === filteredStudents.length) {
       setSelectedIds([]);
@@ -602,6 +671,34 @@ export default function AlumnosPage() {
               {isBulkLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Calculator className="w-5 h-5 text-[#E67E22]" />}
               <span className="text-xs uppercase tracking-widest">Facturación</span>
             </Button>
+
+             <ExcelImporter academyId={academyId || ""} onSuccess={fetchInitialData} />
+
+             {(userEmail?.includes('lucinopdl2401') || userEmail?.includes('lucianopdl2401')) && (
+               <Button 
+                 onClick={async () => {
+                   if (window.confirm("¿ESTÁS SEGURO? Se borrarán TODOS los alumnos de esta academia permanentemente.")) {
+                     if (academyId) {
+                       const res = await cleanupAcademyDataAction(academyId);
+                       if (res.success) {
+                         showAlert("Limpieza Exitosa", res.message, "success");
+                         fetchInitialData();
+                       } else {
+                         showAlert("Error", res.message, "error");
+                       }
+                     } else {
+                        showAlert("Error", "No se detectó el ID de la academia. Recarga la página.", "error");
+                     }
+                   }
+                 }}
+                 variant="outline"
+                 className="gap-2 px-6 h-12 lg:h-14 rounded-2xl lg:rounded-3xl font-bold border-red-200 text-red-500 hover:bg-red-50 transition-all shadow-sm order-3"
+               >
+                 <Trash2 className="w-5 h-5" />
+                 <span className="text-xs uppercase tracking-widest text-[#E74C3C]">Vaciar</span>
+               </Button>
+             )}
+
             <Button 
               onClick={() => {
                 if (showAddForm) {
@@ -1057,63 +1154,8 @@ export default function AlumnosPage() {
           )}
         </div>
 
-        {/* Floating Bulk Actions Bar */}
-        <AnimatePresence>
-          {selectedIds.length > 0 && (
-            <motion.div 
-              initial={{ y: 100, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 100, opacity: 0 }}
-              className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 bg-[#2D241E] text-white px-8 py-5 rounded-[32px] shadow-2xl border border-white/10 flex items-center gap-10 backdrop-blur-xl"
-            >
-              <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Seleccionados</span>
-                <span className="text-xl font-serif font-extrabold text-[#E67E22]">{selectedIds.length} <span className="text-sm font-sans font-medium text-white/60 ml-1">Alumnos</span></span>
-              </div>
-              
-              <div className="h-10 w-px bg-white/10" />
+        {/* La barra de acciones masivas fue unificada al final del archivo para evitar superposiciones */}
 
-              <div className="flex items-center gap-6">
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-white/40 leading-none">Asignar Clase</span>
-                  <select 
-                    onChange={(e) => handleBulkAssignCategory(e.target.value)}
-                    disabled={isBulkLoading}
-                    value=""
-                    className="bg-transparent border-none text-sm font-bold focus:ring-0 cursor-pointer p-0 pr-8 text-white min-w-[150px]"
-                  >
-                    <option value="" disabled className="text-black">Elegir una categoría...</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id} className="text-black">{cat.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="h-10 w-px bg-white/10" />
-
-                <Button 
-                  onClick={handleBulkGenerateSelectedFees}
-                  disabled={isBulkLoading}
-                  className="bg-[#E67E22] hover:bg-orange-600 text-white px-6 h-12 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-orange-500/20 gap-2"
-                >
-                  {isBulkLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calculator className="w-4 h-4" />}
-                  Generar Cuotas
-                </Button>
-                
-                {isBulkLoading && !selectedIds.length && <Loader2 className="w-5 h-5 animate-spin text-[#E67E22]" />}
-              </div>
-
-              <div className="h-10 w-px bg-white/10" />
-
-              <button 
-                onClick={() => setSelectedIds([])}
-                className="text-[10px] font-black uppercase tracking-widest text-[#847365] hover:text-white transition-colors"
-              >
-                Cancelar
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
       {/* Modal de Comprobante / Factura Premium */}
       <AnimatePresence>
@@ -1337,6 +1379,110 @@ _Sahara · Gestión Académica_`);
                   </button>
                </div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* BARRA DE ACCIONES MASIVAS UNIFICADA - ELITE DESIGN */}
+      <AnimatePresence>
+        {selectedIds.length > 0 && (
+          <motion.div 
+            initial={{ y: 100, opacity: 0, x: "-50%" }}
+            animate={{ y: 0, opacity: 1, x: "-50%" }}
+            exit={{ y: 100, opacity: 0, x: "-50%" }}
+            className="fixed bottom-6 left-1/2 z-[110] w-[95%] max-w-5xl"
+          >
+            <div className="bg-[#1A1614]/95 backdrop-blur-2xl text-white rounded-[32px] p-4 lg:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col md:flex-row items-center justify-between gap-6 border border-white/10 relative overflow-hidden">
+              {/* Reflejo dorado sutil */}
+              <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-[#E67E22]/50 to-transparent" />
+              
+              <div className="flex items-center gap-5 shrink-0">
+                <div className="w-14 h-14 bg-gradient-to-br from-[#E67E22] to-[#D35400] rounded-2xl flex items-center justify-center font-black text-2xl shadow-lg shadow-orange-600/20 ring-2 ring-white/10">
+                  {selectedIds.length}
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-1">Alumnos Seleccionados</p>
+                  <p className="text-sm font-bold text-white flex items-center gap-2">
+                    Panel de Acciones Masivas
+                    {isBulkLoading && <Loader2 className="w-4 h-4 animate-spin text-[#E67E22]" />}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-3 lg:gap-4 flex-1">
+                {/* Asignar Clase */}
+                <div className="bg-white/5 hover:bg-white/10 transition-colors rounded-2xl p-2 px-4 border border-white/5 flex flex-col gap-0.5 min-w-[160px]">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-[#E67E22]/70">Cambiar Disciplina</span>
+                  <select 
+                    onChange={(e) => handleBulkAssignCategory(e.target.value)}
+                    disabled={isBulkLoading}
+                    value=""
+                    className="bg-transparent border-none text-xs font-bold focus:ring-0 cursor-pointer p-0 text-white w-full outline-none"
+                  >
+                    <option value="" disabled className="text-black">Seleccionar...</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.id} className="text-black">{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="h-10 w-px bg-white/10 hidden lg:block" />
+
+                {/* Generar Cuotas */}
+                <Button 
+                  onClick={handleBulkGenerateSelectedFees}
+                  disabled={isBulkLoading}
+                  className="bg-[#E67E22] hover:bg-orange-600 text-white px-5 h-12 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-orange-500/20 gap-2 transition-all active:scale-95 border-none"
+                >
+                  <Calculator className="w-4 h-4" />
+                  Facturar
+                </Button>
+
+                <div className="h-10 w-px bg-white/10 hidden lg:block" />
+
+                {/* Archivar */}
+                <Button 
+                  onClick={() => handleBulkArchive('archived')}
+                  disabled={isBulkLoading}
+                  variant="outline"
+                  className="bg-white/5 border-white/10 text-white hover:bg-white/10 rounded-2xl h-12 flex items-center gap-2 px-5 transition-all active:scale-95"
+                >
+                  <Archive className="w-4 h-4 text-white/60" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Archivar</span>
+                </Button>
+
+                {/* Eliminar */}
+                <Button 
+                  onClick={handleBulkDelete}
+                  disabled={isBulkLoading}
+                  variant="destructive"
+                  className="bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-2xl h-12 flex items-center gap-2 px-5 transition-all active:scale-95"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Borrar</span>
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-4 shrink-0 border-l border-white/10 pl-6 hidden sm:flex">
+                <button 
+                  onClick={() => setSelectedIds([])}
+                  className="group flex flex-col items-center gap-1 transition-all"
+                >
+                  <div className="w-10 h-10 rounded-2xl bg-white/5 group-hover:bg-white/10 flex items-center justify-center transition-all">
+                    <XCircle className="w-6 h-6 text-white/40 group-hover:text-white" />
+                  </div>
+                  <span className="text-[8px] font-black uppercase tracking-widest text-white/30 group-hover:text-white/60">Cerrar</span>
+                </button>
+              </div>
+              
+              {/* Botón de cierre para móvil simplificado */}
+              <button 
+                onClick={() => setSelectedIds([])}
+                className="absolute top-2 right-2 p-2 sm:hidden text-white/20"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
