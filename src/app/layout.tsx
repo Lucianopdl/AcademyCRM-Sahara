@@ -17,8 +17,8 @@ export const metadata: Metadata = {
   title: "Academia CRM | Sahara Management",
   description: "Sistema de gestión integral para academias de alto nivel.",
   icons: {
-    icon: "/sahara_logo.png",
-    apple: "/sahara_logo.png",
+    icon: "/icon.png",
+    apple: "/icon.png",
   },
 };
 
