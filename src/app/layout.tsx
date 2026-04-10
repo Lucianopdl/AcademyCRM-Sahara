@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope, EB_Garamond } from "next/font/google";
 import "./globals.css";
+import { AcademyProvider } from "@/hooks/use-academy";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -32,7 +33,9 @@ export default function RootLayout({
       className={`${manrope.variable} ${ebGaramond.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans transition-colors duration-300">
-        {children}
+        <AcademyProvider>
+          {children}
+        </AcademyProvider>
       </body>
     </html>
   );

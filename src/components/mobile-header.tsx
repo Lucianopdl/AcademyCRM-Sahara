@@ -1,29 +1,15 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { School, Bell, Search, User } from "lucide-react";
-import { supabase } from "@/lib/supabase";
-import { motion } from "framer-motion";
+import React from "react";
+import { School, Bell } from "lucide-react";
+import { useAcademy } from "@/hooks/use-academy";
 import Link from "next/link";
 
 export function MobileHeader() {
-  const [academyName, setAcademyName] = useState("Sahara");
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const { settings, loading: contextLoading } = useAcademy();
 
-  useEffect(() => {
-    async function fetchSettings() {
-      const { data, error } = await supabase
-        .from('settings')
-        .select('academy_name, logo_url')
-        .single();
-      
-      if (data && !error) {
-        setAcademyName(data.academy_name || "Sahara");
-        setLogoUrl(data.logo_url);
-      }
-    }
-    fetchSettings();
-  }, []);
+  const academyName = settings?.academy_name || "Sahara";
+  const logoUrl = settings?.logo_url;
 
   return (
     <header className="lg:hidden flex items-center justify-between px-6 h-20 bg-background/80 backdrop-blur-md border-b border-border/50 sticky top-0 z-40">

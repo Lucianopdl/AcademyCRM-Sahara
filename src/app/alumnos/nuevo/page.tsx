@@ -29,16 +29,37 @@ export default function NuevoAlumnoPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase
-      .from('students')
-      .insert([formData]);
-    
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-    } else {
+    setError("");
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("No hay sesión activa");
+
+      let academyId = user.user_metadata?.academy_id;
+      if (!academyId) {
+        const { data: profile } = await supabase.from('user_profiles').select('academy_id').eq('id', user.id).single();
+        if (profile) academyId = profile.academy_id;
+      }
+
+      if (!academyId) throw new Error("No se pudo determinar la academia del usuario");
+
+      const { error: insertError } = await supabase
+        .from('students')
+        .insert([{
+          ...formData,
+          academy_id: academyId,
+          status: 'active',
+          birthdate: formData.birth_date // Corregir nombre de columna si es necesario
+        }]);
+      
+      if (insertError) throw insertError;
+
       setDone(true);
       setTimeout(() => router.push('/alumnos'), 1500);
+    } catch (err: any) {
+      console.error("Error creating student:", err);
+      setError(err.message || "Error al crear el alumno");
+      setLoading(false);
     }
   };
 

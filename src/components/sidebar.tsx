@@ -15,10 +15,10 @@ import {
   ClipboardCheck,
   Wallet,
   ShieldCheck,
-  HandMetal
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
+import { useAcademy } from "@/hooks/use-academy";
 
 const navItems = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -32,9 +32,7 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [academyName, setAcademyName] = useState("Sahara");
-  const [rubro, setRubro] = useState("Academy Manager");
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const { settings, loading: contextLoading } = useAcademy();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
@@ -51,19 +49,6 @@ export function Sidebar() {
       if (user) setUserEmail(user.email || null);
     }
     getUser();
-
-    async function fetchSettings() {
-      const { data, error } = await supabase
-        .from('settings')
-        .select('academy_name, category, logo_url')
-        .single();
-      if (data && !error) {
-        setAcademyName(data.academy_name || "Sahara");
-        setRubro(data.category || "Academy Manager");
-        setLogoUrl(data.logo_url);
-      }
-    }
-    fetchSettings();
   }, []);
 
   const toggleDarkMode = () => {
@@ -77,6 +62,10 @@ export function Sidebar() {
       localStorage.setItem("theme", "light");
     }
   };
+
+  const academyName = settings?.academy_name || "Sahara";
+  const rubro = settings?.category || "Academy Manager";
+  const logoUrl = settings?.logo_url;
 
   return (
     <aside className="hidden lg:flex w-72 bg-card border-r border-border h-screen flex-col sticky top-0 shadow-sm">

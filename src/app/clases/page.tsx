@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Sidebar } from "@/components/sidebar";
+import { useAcademy } from "@/hooks/use-academy";
 import { 
   Music, 
   Plus, 
@@ -58,17 +59,27 @@ export default function ClasesPage() {
   const [newClassSchedule, setNewClassSchedule] = useState("");
   const [selectedCatId, setSelectedCatId] = useState("");
   const [saving, setSaving] = useState(false);
+  
+  // Use unified academy context
+  const { academyId, userId, loading: contextLoading } = useAcademy();
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   const fetchData = async () => {
+    if (!academyId || contextLoading) return;
     setLoading(true);
-    const { data: catData } = await supabase.from('categories').select('*').order('name');
-    const { data: classData } = await supabase.from('classes').select('*').order('name');
-    const { data: settingsData } = await supabase.from('settings').select('currency').single();
-    
-    if (catData) setCategories(catData);
-    if (classData) setClasses(classData);
-    if (settingsData?.currency) setCurrency(settingsData.currency);
-    setLoading(false);
+    try {
+      const { data: catData } = await supabase.from('categories').select('*').eq('academy_id', academyId).order('name');
+      const { data: classData } = await supabase.from('classes').select('*').eq('academy_id', academyId).order('name');
+      const { data: settingsData } = await supabase.from('settings').select('currency').eq('academy_id', academyId).single();
+      
+      if (catData) setCategories(catData);
+      if (classData) setClasses(classData);
+      if (settingsData?.currency) setCurrency(settingsData.currency);
+    } catch (err) {
+      console.error("Error fetching clases data:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filteredClasses = classes.filter(c => {
@@ -79,8 +90,18 @@ export default function ClasesPage() {
   });
 
   useEffect(() => {
-    fetchData();
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setUserEmail(user.email || null);
+    };
+    fetchUser();
   }, []);
+
+  useEffect(() => {
+    if (academyId && !contextLoading) {
+      fetchData();
+    }
+  }, [academyId, contextLoading]);
 
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,7 +109,8 @@ export default function ClasesPage() {
     
     const payload = { 
       name: newCatName,
-      price: parseFloat(newCatPrice) || 0
+      price: parseFloat(newCatPrice) || 0,
+      academy_id: academyId
     };
 
     let error;
@@ -118,7 +140,8 @@ export default function ClasesPage() {
       name: newClassName, 
       teacher_name: newClassTeacher,
       schedule: newClassSchedule,
-      category_id: selectedCatId || null
+      category_id: selectedCatId || null,
+      academy_id: academyId
     };
 
     let error;

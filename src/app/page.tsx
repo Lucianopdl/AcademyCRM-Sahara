@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useAcademy } from "@/hooks/use-academy";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { 
@@ -30,30 +31,37 @@ export default function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
 
+  const { academyId, userId, loading: contextLoading } = useAcademy();
+
   useEffect(() => {
     async function fetchDashboardData() {
+      if (!academyId || contextLoading) return;
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.user_metadata?.full_name) {
-        setUserFirstName(user.user_metadata.full_name.split(' ')[0]);
-      } else if (user?.email) {
-        setUserFirstName(user.email.split('@')[0]);
-      }
-
-      const { data: settings } = await supabase
-        .from('settings')
-        .select('academy_name, category')
-        .maybeSingle();
       
-      if (settings) {
-        setAcademyInfo({ name: settings.academy_name, rubro: settings.category });
+      // Attempt to get user name from hook context or auth
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        if (user.user_metadata?.full_name) {
+          setUserFirstName(user.user_metadata.full_name.split(' ')[0]);
+        } else if (user.email) {
+          setUserFirstName(user.email.split('@')[0]);
+        }
       }
 
-      const [studentsRes, classesRes, paymentsRes] = await Promise.all([
-        supabase.from('students').select('*', { count: 'exact', head: true }),
-        supabase.from('classes').select('*', { count: 'exact', head: true }),
-        supabase.from('payments').select('amount'),
+      // Fetch filtered data
+      const [settingsRes, studentsRes, classesRes, paymentsRes] = await Promise.all([
+        supabase.from('settings').select('academy_name, category').eq('academy_id', academyId).maybeSingle(),
+        supabase.from('students').select('*', { count: 'exact', head: true }).eq('academy_id', academyId),
+        supabase.from('classes').select('*', { count: 'exact', head: true }).eq('academy_id', academyId),
+        supabase.from('payments').select('amount').eq('academy_id', academyId),
       ]);
+
+      if (settingsRes.data) {
+        setAcademyInfo({ 
+          name: settingsRes.data.academy_name, 
+          rubro: settingsRes.data.category 
+        });
+      }
 
       setStats({
         studentsCount: studentsRes.count || 0,
@@ -63,7 +71,7 @@ export default function Dashboard() {
       setLoading(false);
     }
     fetchDashboardData();
-  }, []);
+  }, [academyId, contextLoading]);
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },

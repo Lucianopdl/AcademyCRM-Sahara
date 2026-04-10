@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
+import { useAcademy } from "@/hooks/use-academy";
 import { DashboardShell } from "@/components/dashboard-shell";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -100,7 +101,7 @@ export default function AlumnosPage() {
   
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkLoading, setIsBulkLoading] = useState(false);
-  const [academyId, setAcademyId] = useState<string | null>(null);
+  const { academyId, userId, loading: contextLoading } = useAcademy();
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   const [invoiceData, setInvoiceData] = useState<{
@@ -163,63 +164,51 @@ export default function AlumnosPage() {
   };
 
   const fetchInitialData = async () => {
+    if (!academyId) return;
     setLoading(true);
-    const { data: studentsData } = await supabase
-      .from('students')
-      .select('*')
-      .order('full_name', { ascending: true });
-    
-    if (studentsData) setStudents(studentsData);
 
-    const { data: catData } = await supabase
-      .from('categories')
-      .select('*')
-      .order('name');
-    
-    if (catData) setCategories(catData);
+    try {
+      // 1. Fetch Students - Filtered by academy
+      const { data: studentsData } = await supabase
+        .from('students')
+        .select('*')
+        .eq('academy_id', academyId)
+        .order('full_name', { ascending: true });
+      
+      if (studentsData) setStudents(studentsData);
 
-    const currentMonth = new Date().getMonth() + 1;
-    const currentYear = new Date().getFullYear();
-    const { data: payData } = await supabase
-      .from('payments')
-      .select('id, student_id, period_month, period_year, status, amount')
-      .eq('period_month', currentMonth)
-      .eq('period_year', currentYear);
-    
-    if (payData) setPayments(payData as Payment[]);
+      // 2. Fetch Categories - Filtered by academy
+      const { data: catData } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('academy_id', academyId)
+        .order('name');
+      
+      if (catData) setCategories(catData);
 
-    setLoading(false);
+      // 3. Fetch Payments - Filtered by academy
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+      const { data: payData } = await supabase
+        .from('payments')
+        .select('id, student_id, period_month, period_year, status, amount')
+        .eq('academy_id', academyId)
+        .eq('period_month', currentMonth)
+        .eq('period_year', currentYear);
+      
+      if (payData) setPayments(payData as Payment[]);
+    } catch (error) {
+      console.error("Error fetching initial data:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    fetchInitialData();
-    
-    // Obtener info del usuario y academia
-    const getUserContext = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserEmail(user.email || null);
-        
-        // Intentar primero desde metadata (más rápido y seguro)
-        const metaAcademyId = user.user_metadata?.academy_id;
-        if (metaAcademyId) {
-          console.log("Academy ID from metadata:", metaAcademyId);
-          setAcademyId(metaAcademyId);
-        } else {
-          // Fallback al perfil si no está en metadata
-          console.log("No academy_id in metadata, checking user_profiles...");
-          const { data: profile } = await supabase.from('user_profiles').select('academy_id').eq('id', user.id).single();
-          if (profile) {
-            console.log("Academy ID from profiles:", profile.academy_id);
-            setAcademyId(profile.academy_id);
-          } else {
-            console.warn("No academy_id found for user.");
-          }
-        }
-      }
-    };
-    getUserContext();
-  }, []);
+    if (academyId && !contextLoading) {
+      fetchInitialData();
+    }
+  }, [academyId, contextLoading]);
 
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -236,7 +225,8 @@ export default function AlumnosPage() {
       category_id: formData.category_id || null,
       discount_value: hasPromo ? (parseFloat(formData.discount_value) || 0) : 0,
       discount_type: formData.discount_type,
-      status: 'active'
+      status: 'active',
+      academy_id: academyId // Force academy assignment
     };
 
     let error;
@@ -464,7 +454,7 @@ export default function AlumnosPage() {
           };
         });
 
-        const { error } = await supabase.from('payments').insert(newFees);
+        const { error } = await supabase.from('payments').insert(newFees.map(f => ({ ...f, academy_id: academyId })));
         if (!error) {
           showAlert("Facturación Masiva", `Se han generado ${studentsWithoutFee.length} cuotas correctamente.`, "success");
           fetchInitialData();
@@ -514,7 +504,7 @@ export default function AlumnosPage() {
           };
         });
 
-        const { error } = await supabase.from('payments').insert(newFees);
+        const { error } = await supabase.from('payments').insert(newFees.map(f => ({ ...f, academy_id: academyId })));
         if (!error) {
           showAlert("Facturación Selectiva", "Las cuotas para los alumnos seleccionados han sido generadas.", "success");
           setSelectedIds([]);
@@ -535,6 +525,7 @@ export default function AlumnosPage() {
     const { error } = await supabase
       .from('students')
       .update({ category_id: categoryId })
+      .eq('academy_id', academyId)
       .in('id', selectedIds);
 
     if (!error) {
@@ -551,7 +542,7 @@ export default function AlumnosPage() {
     
     const executeDelete = async () => {
       setIsBulkLoading(true);
-      const res = await bulkDeleteStudentsAction(selectedIds);
+      const res = await bulkDeleteStudentsAction(selectedIds, academyId!);
       if (res.success) {
         showAlert("Eliminación Exitosa", res.message, "success");
         setSelectedIds([]);
@@ -569,7 +560,7 @@ export default function AlumnosPage() {
     if (!selectedIds.length) return;
     
     setIsBulkLoading(true);
-    const res = await bulkUpdateStatusAction(selectedIds, status);
+    const res = await bulkUpdateStatusAction(selectedIds, status, academyId!);
     if (res.success) {
       showAlert("Éxito", res.message, "success");
       setSelectedIds([]);
@@ -654,6 +645,27 @@ export default function AlumnosPage() {
     return matchesSearch && matchesStatus && matchesCategory && matchesPayment;
   });
 
+  if (!loading && !academyId) {
+    return (
+      <DashboardShell>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] p-10 text-center">
+          <AlertCircle className="w-16 h-16 text-amber-500 mb-4" />
+          <h2 className="text-2xl font-serif font-bold text-[#2D241E]">No se detectó tu Academia</h2>
+          <p className="text-[#847365] mt-2 max-w-md">
+            No pudimos vincular tu sesión con una academia activa. 
+            Por favor, reingresá al sistema o contactá al administrador.
+          </p>
+          <Button 
+            onClick={() => window.location.reload()} 
+            className="mt-6 bg-[#E67E22] text-white rounded-2xl px-8"
+          >
+            Reintentar Carga
+          </Button>
+        </div>
+      </DashboardShell>
+    );
+  }
+
   return (
     <DashboardShell>
       <div className="p-4 lg:p-10 relative">
@@ -672,7 +684,8 @@ export default function AlumnosPage() {
               <span className="text-xs uppercase tracking-widest">Facturación</span>
             </Button>
 
-             <ExcelImporter academyId={academyId || ""} onSuccess={fetchInitialData} />
+             {/* El importador de Excel ha sido removido por solicitud del usuario */}
+
 
              {(userEmail?.includes('lucinopdl2401') || userEmail?.includes('lucianopdl2401')) && (
                <Button 
@@ -1392,104 +1405,97 @@ _Sahara · Gestión Académica_`);
             exit={{ y: 100, opacity: 0, x: "-50%" }}
             className="fixed bottom-6 left-1/2 z-[110] w-[95%] max-w-5xl"
           >
-            <div className="bg-[#1A1614]/95 backdrop-blur-2xl text-white rounded-[32px] p-4 lg:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col md:flex-row items-center justify-between gap-6 border border-white/10 relative overflow-hidden">
-              {/* Reflejo dorado sutil */}
-              <div className="absolute top-0 left-1/4 w-1/2 h-px bg-gradient-to-r from-transparent via-[#E67E22]/50 to-transparent" />
+            <div className="bg-[#1A1614]/98 backdrop-blur-3xl text-white rounded-[32px] p-4 lg:p-6 shadow-[0_30px_60px_rgba(0,0,0,0.6)] flex flex-col lg:flex-row items-center justify-between gap-5 border border-white/10 relative overflow-hidden">
+              {/* Reflejo dorado premium */}
+              <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#E67E22]/30 to-transparent" />
               
-              <div className="flex items-center gap-5 shrink-0">
-                <div className="w-14 h-14 bg-gradient-to-br from-[#E67E22] to-[#D35400] rounded-2xl flex items-center justify-center font-black text-2xl shadow-lg shadow-orange-600/20 ring-2 ring-white/10">
-                  {selectedIds.length}
+              <div className="flex items-center gap-4 shrink-0 w-full lg:w-auto justify-between lg:justify-start border-b lg:border-none border-white/5 pb-4 lg:pb-0">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-[#E67E22] to-[#D35400] rounded-2xl flex items-center justify-center font-black text-xl shadow-lg shadow-orange-600/20 ring-1 ring-white/10 shrink-0">
+                    {selectedIds.length}
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-0.5">Seleccionados</p>
+                    <p className="text-xs font-bold text-white flex items-center gap-2">
+                      Acciones Masivas
+                      {isBulkLoading && <Loader2 className="w-3 h-3 animate-spin text-[#E67E22]" />}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-1">Alumnos Seleccionados</p>
-                  <p className="text-sm font-bold text-white flex items-center gap-2">
-                    Panel de Acciones Masivas
-                    {isBulkLoading && <Loader2 className="w-4 h-4 animate-spin text-[#E67E22]" />}
-                  </p>
-                </div>
+                <button 
+                  onClick={() => setSelectedIds([])}
+                  className="lg:hidden p-2 bg-white/5 rounded-xl text-white/40 hover:text-white"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
               </div>
 
-              <div className="flex flex-wrap items-center justify-center gap-3 lg:gap-4 flex-1">
+              <div className="flex flex-wrap items-center justify-center gap-2 lg:gap-4 flex-1 w-full lg:w-auto">
                 {/* Asignar Clase */}
-                <div className="bg-white/5 hover:bg-white/10 transition-colors rounded-2xl p-2 px-4 border border-white/5 flex flex-col gap-0.5 min-w-[160px]">
-                  <span className="text-[8px] font-black uppercase tracking-widest text-[#E67E22]/70">Cambiar Disciplina</span>
+                <div className="bg-white/5 hover:bg-white/10 transition-all rounded-2xl p-2 px-4 border border-white/5 flex flex-col gap-0.5 min-w-[130px] flex-1 sm:flex-none">
+                  <span className="text-[7px] font-black uppercase tracking-widest text-[#E67E22]/80">Disciplina</span>
                   <select 
                     onChange={(e) => handleBulkAssignCategory(e.target.value)}
                     disabled={isBulkLoading}
                     value=""
-                    className="bg-transparent border-none text-xs font-bold focus:ring-0 cursor-pointer p-0 text-white w-full outline-none"
+                    className="bg-transparent border-none text-[11px] font-bold focus:ring-0 cursor-pointer p-0 text-white w-full outline-none appearance-none"
                   >
-                    <option value="" disabled className="text-black">Seleccionar...</option>
+                    <option value="" disabled className="text-black">Cambiar a...</option>
                     {categories.map(cat => (
                       <option key={cat.id} value={cat.id} className="text-black">{cat.name}</option>
                     ))}
                   </select>
                 </div>
 
-                <div className="h-10 w-px bg-white/10 hidden lg:block" />
+                <div className="h-8 w-px bg-white/10 hidden xl:block" />
 
-                {/* Generar Cuotas */}
-                <Button 
-                  onClick={handleBulkGenerateSelectedFees}
-                  disabled={isBulkLoading}
-                  className="bg-[#E67E22] hover:bg-orange-600 text-white px-5 h-12 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-orange-500/20 gap-2 transition-all active:scale-95 border-none"
-                >
-                  <Calculator className="w-4 h-4" />
-                  Facturar
-                </Button>
+                <div className="grid grid-cols-2 sm:flex items-center gap-2 flex-1 sm:flex-none">
+                  <Button 
+                    onClick={handleBulkGenerateSelectedFees}
+                    disabled={isBulkLoading}
+                    className="bg-[#E67E22] hover:bg-orange-600 text-white h-11 px-4 rounded-xl font-black text-[9px] uppercase tracking-widest gap-2 transition-all active:scale-95 border-none w-full sm:w-auto"
+                  >
+                    <Calculator className="w-3.5 h-3.5" />
+                    Facturar
+                  </Button>
 
-                <div className="h-10 w-px bg-white/10 hidden lg:block" />
+                  <Button 
+                    onClick={() => handleBulkArchive('archived')}
+                    disabled={isBulkLoading}
+                    variant="outline"
+                    className="bg-white/5 border-white/10 text-white hover:bg-white/10 rounded-xl h-11 flex items-center gap-2 px-4 transition-all active:scale-95 w-full sm:w-auto"
+                  >
+                    <Archive className="w-3.5 h-3.5 text-white/50" />
+                    <span className="text-[9px] font-black uppercase tracking-widest">Archivar</span>
+                  </Button>
 
-                {/* Archivar */}
-                <Button 
-                  onClick={() => handleBulkArchive('archived')}
-                  disabled={isBulkLoading}
-                  variant="outline"
-                  className="bg-white/5 border-white/10 text-white hover:bg-white/10 rounded-2xl h-12 flex items-center gap-2 px-5 transition-all active:scale-95"
-                >
-                  <Archive className="w-4 h-4 text-white/60" />
-                  <span className="text-[10px] font-black uppercase tracking-widest">Archivar</span>
-                </Button>
-
-                {/* Eliminar */}
-                <Button 
-                  onClick={handleBulkDelete}
-                  disabled={isBulkLoading}
-                  variant="ghost"
-                  className="bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-2xl h-12 flex items-center gap-2 px-5 transition-all active:scale-95"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span className="text-[10px] font-black uppercase tracking-widest">Borrar</span>
-                </Button>
+                  <Button 
+                    onClick={handleBulkDelete}
+                    disabled={isBulkLoading}
+                    variant="ghost"
+                    className="col-span-2 sm:col-auto bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-xl h-11 flex items-center justify-center gap-2 px-4 transition-all active:scale-95 w-full sm:w-auto"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span className="text-[9px] font-black uppercase tracking-widest">Borrar</span>
+                  </Button>
+                </div>
               </div>
 
-              <div className="flex items-center gap-4 shrink-0 border-l border-white/10 pl-6 hidden sm:flex">
+              <div className="items-center gap-4 shrink-0 border-l border-white/10 pl-6 hidden lg:flex">
                 <button 
                   onClick={() => setSelectedIds([])}
                   className="group flex flex-col items-center gap-1 transition-all"
                 >
-                  <div className="w-10 h-10 rounded-2xl bg-white/5 group-hover:bg-white/10 flex items-center justify-center transition-all">
-                    <XCircle className="w-6 h-6 text-white/40 group-hover:text-white" />
+                  <div className="w-10 h-10 rounded-xl bg-white/5 group-hover:bg-white/10 flex items-center justify-center transition-all">
+                    <XCircle className="w-5 h-5 text-white/40 group-hover:text-white" />
                   </div>
-                  <span className="text-[8px] font-black uppercase tracking-widest text-white/30 group-hover:text-white/60">Cerrar</span>
+                  <span className="text-[7px] font-bold uppercase tracking-widest opacity-0 group-hover:opacity-60 transition-opacity">Cerrar</span>
                 </button>
               </div>
-              
-              {/* Botón de cierre para móvil simplificado */}
-              <button 
-                onClick={() => setSelectedIds([])}
-                className="absolute top-2 right-2 p-2 sm:hidden text-white/20"
-              >
-                <XCircle className="w-5 h-5" />
-              </button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      <style jsx global>{`
-        .shadow-warm { box-shadow: 0 10px 40px -10px rgba(132, 115, 101, 0.12); }
-      `}</style>
       </div>
     </DashboardShell>
   );

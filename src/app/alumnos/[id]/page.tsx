@@ -110,6 +110,7 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [attendanceDate, setAttendanceDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [userId, setUserId] = useState<string | null>(null);
+  const [academyId, setAcademyId] = useState<string | null>(null);
 
   useEffect(() => {
     async function getSession() {
@@ -170,63 +171,90 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
   };
 
   const fetchData = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    let currentAcademyId = user?.user_metadata?.academy_id;
+    
+    if (!currentAcademyId && user) {
+      const { data: profile } = await supabase.from('user_profiles').select('academy_id').eq('id', user.id).single();
+      if (profile) currentAcademyId = profile.academy_id;
+    }
+
+    if (!currentAcademyId) {
+      setLoading(false);
+      return;
+    }
+
+    setAcademyId(currentAcademyId);
     setLoading(true);
     
-    // 1. Fetch Student
+    // 1. Fetch Student - Filtered by academy
     const { data: studentData } = await supabase
       .from('students')
       .select('*')
       .eq('id', id)
+      .eq('academy_id', currentAcademyId)
       .single();
     
     if (studentData) setStudent(studentData);
+    else {
+      setLoading(false);
+      return; // Si no pertenece a la academia, no cargamos nada
+    }
 
-    // 2. Fetch Fees
+    // 2. Fetch Fees - Filtered by academy
     const { data: feesData } = await supabase
       .from('fees')
       .select('*')
       .eq('student_id', id)
+      .eq('academy_id', currentAcademyId)
       .order('year', { ascending: false })
       .order('month', { ascending: false });
     
     if (feesData) setFees(feesData);
 
-    // 3. Fetch Payments
+    // 3. Fetch Payments - Filtered by academy
     const { data: paymentsData } = await supabase
       .from('payments')
       .select('*')
       .eq('student_id', id)
+      .eq('academy_id', currentAcademyId)
       .order('payment_date', { ascending: false });
     
     if (paymentsData) setPayments(paymentsData);
 
-    // 4. Fetch Enrollments
+    // 4. Fetch Enrollments - Filtered by academy
     const { data: enrollData } = await supabase
       .from('enrollments')
       .select('*, classes(name, teacher_name, schedule)')
-      .eq('student_id', id);
+      .eq('student_id', id)
+      .eq('academy_id', currentAcademyId);
     
     if (enrollData) setEnrollments(enrollData as any);
 
-    // 5. Fetch All Classes for Selector
+    // 5. Fetch All Classes for Selector - Filtered by academy
     const { data: classesData } = await supabase
       .from('classes')
       .select('id, name, teacher_name')
+      .eq('academy_id', currentAcademyId)
       .order('name');
     
     if (classesData) setAvailableClasses(classesData);
 
-    // 6. Fetch Attendance for Current Date
-    fetchAttendance(format(new Date(), 'yyyy-MM-dd'));
-
+    // 6. Fetch Attendance for Current Date - Filtered by academy
+    fetchAttendance(format(new Date(), 'yyyy-MM-dd'), currentAcademyId);
 
     setLoading(false);
   };
-  const fetchAttendance = async (date: string) => {
+
+  const fetchAttendance = async (date: string, currentAcademyId?: string) => {
+    const activeAcademyId = currentAcademyId || academyId;
+    if (!activeAcademyId) return;
+
     const { data } = await supabase
       .from('attendance')
       .select('*')
       .eq('student_id', id)
+      .eq('academy_id', activeAcademyId)
       .eq('date', date);
     
     if (data) setAttendance(data);
@@ -607,7 +635,7 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
                               <p className="text-sm text-[#847365] font-medium opacity-60">Marca el presente de las clases para el día seleccionado.</p>
                            </div>
                            
-                           <div className="flex items-center gap-3 bg-[#F5F1EE] p-1.5 rounded-2xl">
+                            <div className="flex items-center gap-3 bg-[#F5F1EE] p-1.5 rounded-2xl">
                               <input 
                                  type="date" 
                                  value={attendanceDate}

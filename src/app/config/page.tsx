@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Sidebar } from "@/components/sidebar";
+import { useAcademy } from "@/hooks/use-academy";
 import { 
   Settings, 
   Shield, 
@@ -28,6 +29,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 
 export default function ConfigPage() {
+  const { academyId, settings, loading: contextLoading } = useAcademy();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -41,31 +43,18 @@ export default function ConfigPage() {
   });
 
   useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  async function fetchSettings() {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('settings')
-        .select('*')
-        .maybeSingle();
-
-      if (data) {
+    if (!contextLoading) {
+      if (settings) {
         setFormData({
-          academy_name: data.academy_name || "",
-          category: data.category || "",
-          currency: data.currency || "USD",
-          logo_url: data.logo_url || ""
+          academy_name: settings.academy_name || "",
+          category: settings.category || "",
+          currency: (settings as any).currency || "USD",
+          logo_url: settings.logo_url || ""
         });
       }
-    } catch (err) {
-      console.error("Error fetching settings:", err);
-    } finally {
       setLoading(false);
     }
-  }
+  }, [contextLoading, settings]);
 
   async function handleSave() {
     try {
@@ -81,12 +70,13 @@ export default function ConfigPage() {
         currency: formData.currency,
         logo_url: formData.logo_url,
         user_id: user.id,
+        academy_id: academyId, // Vinculamos a la academia
         updated_at: new Date().toISOString()
       };
 
       const { error } = await supabase
         .from('settings')
-        .upsert(updatePayload, { onConflict: 'user_id' });
+        .upsert(updatePayload, { onConflict: 'academy_id' }); // El conflicto ahora es por academia
 
       if (error) throw error;
       

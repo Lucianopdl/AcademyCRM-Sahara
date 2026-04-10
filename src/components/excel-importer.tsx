@@ -22,10 +22,21 @@ export function ExcelImporter({ academyId, onSuccess }: ExcelImporterProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!academyId) {
+      setStatus({ type: 'error', message: "No se pudo detectar la academia. Reintenta en unos segundos." });
+      return;
+    }
+
     setLoading(true);
     setStatus(null);
 
     const reader = new FileReader();
+
+    reader.onerror = () => {
+      setLoading(false);
+      setStatus({ type: 'error', message: "Error al leer el archivo. Intentá de nuevo." });
+    };
+
     reader.onload = async (evt) => {
       try {
         const bstr = evt.target?.result;
@@ -34,28 +45,31 @@ export function ExcelImporter({ academyId, onSuccess }: ExcelImporterProps) {
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws);
 
-        if (data.length === 0) {
-          throw new Error("El archivo Excel está vacío.");
+        if (!data || data.length === 0) {
+          throw new Error("El archivo Excel no tiene datos válidos.");
         }
 
-        // Asegurar que pasamos objetos planos (serializables) al Server Action
-        const plainData = JSON.parse(JSON.stringify(data));
-        const res = await importStudentsAction(academyId, plainData);
+        const res = await importStudentsAction(academyId, data);
         if (res.success) {
           setStatus({ type: 'success', message: res.message });
           onSuccess();
-          setTimeout(() => setIsOpen(false), 2000);
+          setTimeout(() => {
+            setIsOpen(false);
+            setStatus(null);
+          }, 2000);
         } else {
           setStatus({ type: 'error', message: res.message });
         }
       } catch (err: any) {
-        setStatus({ type: 'error', message: "Error al procesar el archivo: " + err.message });
+        console.error("Error processing excel:", err);
+        setStatus({ type: 'error', message: "Error: " + (err.message || "Archivo incompatible") });
       } finally {
         setLoading(false);
         if (fileInputRef.current) fileInputRef.current.value = "";
       }
     };
     reader.readAsBinaryString(file);
+
   };
 
   const downloadTemplate = () => {
@@ -73,7 +87,8 @@ export function ExcelImporter({ academyId, onSuccess }: ExcelImporterProps) {
     <>
       <Button 
         onClick={() => setIsOpen(true)}
-        className="gap-2 px-6 h-12 lg:h-14 rounded-2xl lg:rounded-3xl font-bold transition-all bg-[#D4AF37] hover:bg-[#B8860B] text-white shadow-lg active:scale-95 border-none"
+        disabled={!academyId}
+        className="gap-2 px-6 h-12 lg:h-14 rounded-2xl lg:rounded-3xl font-bold transition-all bg-[#D4AF37] hover:bg-[#B8860B] text-white shadow-lg active:scale-95 border-none disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <FileSpreadsheet className="w-5 h-5" />
         <span className="text-xs uppercase tracking-widest">Importar Alumnos</span>

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
+import { useAcademy } from "@/hooks/use-academy";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -51,33 +52,30 @@ export default function AsistenciasPage() {
   const [selectedClassId, setSelectedClassId] = useState<string>("all");
   const [selectedDate, setSelectedDate] = useState<Date>(startOfToday());
   const [attendanceData, setAttendanceData] = useState<Record<string, Attendance>>({});
-  const [loading, setLoading] = useState(true);
+  const [innerLoading, setInnerLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingStatus, setSavingStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [userId, setUserId] = useState<string | null>(null);
+  const { academyId, userId, loading: contextLoading } = useAcademy();
 
   useEffect(() => {
-    async function getSession() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-      } else {
-        console.warn("No active session found");
-      }
+    if (academyId && !contextLoading) {
+      fetchData();
     }
-    getSession();
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [selectedDate, selectedClassId]);
+  }, [selectedDate, selectedClassId, academyId, contextLoading]);
 
   async function fetchData() {
-    setLoading(true);
+    if (!academyId) return;
+    // No usamos el setLoading local, usamos el estado de contextLoading si fuera necesario, 
+    // pero aquí mantendremos un estado de carga interno para los datos específicos de la página.
+    setInnerLoading(true);
     try {
-      // 1. Fetch Classes solo si no están cacheadas localmente
+      // 1. Fetch Classes for this academy
       if (classes.length === 0) {
-        const { data: classData } = await supabase.from('classes').select('id, name, category_id').order('name');
+        const { data: classData } = await supabase
+          .from('classes')
+          .select('id, name, category_id')
+          .eq('academy_id', academyId)
+          .order('name');
         setClasses(classData || []);
       }
 
@@ -85,14 +83,15 @@ export default function AsistenciasPage() {
       if (selectedClassId === "all") {
         setStudents([]);
         setAttendanceData({});
-        setLoading(false);
+        setInnerLoading(false);
         return;
       }
 
-      // 3. Fetch Students inscriptos en la clase
+      // 3. Fetch Students inscriptos en la clase (filtrado por academy_id para seguridad extra)
       const { data: enrolledStudents, error: enrollError } = await supabase
         .from('enrollments')
         .select('student_id')
+        .eq('academy_id', academyId)
         .eq('class_id', selectedClassId);
       
       const studentIds = enrolledStudents?.map(e => e.student_id) || [];
@@ -100,7 +99,7 @@ export default function AsistenciasPage() {
       if (studentIds.length === 0) {
         setStudents([]);
         setAttendanceData({});
-        setLoading(false);
+        setInnerLoading(false);
         return;
       }
 
@@ -135,7 +134,7 @@ export default function AsistenciasPage() {
     } catch (error) {
       console.error("Error fetching attendance data:", error);
     } finally {
-      setLoading(false);
+      setInnerLoading(false);
     }
   }
 
@@ -168,13 +167,14 @@ export default function AsistenciasPage() {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
     try {
-      if (!userId) {
+      let currentUserId = userId;
+      if (!currentUserId) {
         console.log("Intentando recuperar sesión...");
         const sessionRes = await supabase.auth.getSession();
         console.log("Resultado de getSession:", sessionRes);
 
         if (sessionRes.data.session?.user) {
-          setUserId(sessionRes.data.session.user.id);
+          currentUserId = sessionRes.data.session.user.id;
         } else {
           const userRes = await supabase.auth.getUser();
           console.log("Resultado de getUser:", userRes);
@@ -182,14 +182,15 @@ export default function AsistenciasPage() {
           if (!userRes.data.user) {
             throw new Error(`No hay una sesión activa. (Error: ${userRes.error?.message || "Sin sesión local"})`);
           }
-          setUserId(userRes.data.user.id);
+          currentUserId = userRes.data.user.id;
         }
       }
 
       const records = Object.values(attendanceData)
         .filter(att => att.status && att.student_id && att.class_id)
         .map(att => ({
-          user_id: userId,
+          user_id: currentUserId,
+          academy_id: academyId, // Inyectamos el ID de la academia para aislamiento
           student_id: att.student_id,
           status: att.status,
           date: dateStr,
@@ -285,7 +286,7 @@ export default function AsistenciasPage() {
                 variant="outline"
                 className="flex-1 sm:flex-none h-12 lg:h-14 rounded-2xl gap-2 font-bold px-6"
                 onClick={markAllPresent}
-                disabled={loading || selectedClassId === "all" || filteredStudents.length === 0}
+                disabled={innerLoading || selectedClassId === "all" || filteredStudents.length === 0}
               >
                 <Check className="w-4 h-4" />
                 <span className="hidden sm:inline">Todos Presentes</span>
@@ -306,7 +307,7 @@ export default function AsistenciasPage() {
 
           {/* Attendance List */}
           <div className="space-y-4 mb-20">
-            {loading ? (
+            {innerLoading ? (
               <div className="p-20 flex flex-col items-center justify-center gap-4 text-[#847365]/40">
                 <Loader2 className="w-8 h-8 animate-spin" />
                 <p className="animate-pulse font-bold text-sm">Cargando alumnos...</p>

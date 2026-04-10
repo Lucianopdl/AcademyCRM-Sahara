@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
+import { useAcademy } from "@/hooks/use-academy";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { motion, AnimatePresence } from "framer-motion";
 import html2canvas from "html2canvas-pro";
@@ -74,6 +75,9 @@ export default function FinanzasPage() {
   const [saving, setSaving] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
+  
+  // Multi-tenant isolation
+  // Multi-tenant isolation is handled by useAcademy hook
 
   // Form states
   const [expenseForm, setExpenseForm] = useState({
@@ -89,33 +93,44 @@ export default function FinanzasPage() {
     color: "#E67E22"
   });
 
+  const { academyId, userId, loading: contextLoading } = useAcademy();
+
   useEffect(() => {
-    fetchData();
-  }, [selectedMonth]);
+    if (academyId && !contextLoading) {
+      fetchData();
+    }
+  }, [selectedMonth, academyId, contextLoading]);
 
   const fetchData = async () => {
+    if (!academyId) return;
     setLoading(true);
     const start = startOfMonth(selectedMonth).toISOString();
     const end = endOfMonth(selectedMonth).toISOString();
 
     try {
-      // 1. Fetch Categories
-      const { data: catData } = await supabase.from('expense_categories').select('*').order('name');
+      // 1. Fetch Categories - filtered by academy
+      const { data: catData } = await supabase
+        .from('expense_categories')
+        .select('*')
+        .eq('academy_id', academyId)
+        .order('name');
       if (catData) setCategories(catData);
 
-      // 2. Fetch Expenses for month
+      // 2. Fetch Expenses for month - filtered by academy
       const { data: expData } = await supabase
         .from('expenses')
         .select('*, expense_categories(name, color)')
+        .eq('academy_id', academyId)
         .gte('date', start.split('T')[0])
         .lte('date', end.split('T')[0])
         .order('date', { ascending: false });
       if (expData) setExpenses(expData as any);
 
-      // 3. Fetch Payments (Income) for month
+      // 3. Fetch Payments (Income) for month - filtered by academy
       const { data: payData } = await supabase
         .from('payments')
         .select('id, amount, payment_date')
+        .eq('academy_id', academyId)
         .gte('payment_date', start)
         .lte('payment_date', end);
       if (payData) setPayments(payData);
@@ -135,6 +150,7 @@ export default function FinanzasPage() {
 
     const { error } = await supabase.from('expenses').insert([{
       user_id: user.id,
+      academy_id: academyId,
       description: expenseForm.description,
       amount: parseFloat(expenseForm.amount),
       date: expenseForm.date,
@@ -167,6 +183,7 @@ export default function FinanzasPage() {
 
     const { error } = await supabase.from('expense_categories').insert([{
       user_id: user.id,
+      academy_id: academyId,
       name: categoryForm.name,
       color: categoryForm.color
     }]);
@@ -183,7 +200,11 @@ export default function FinanzasPage() {
 
   const handleDeleteExpense = async (id: string) => {
     if (!confirm("¿Estás seguro de eliminar este registro?")) return;
-    const { error } = await supabase.from('expenses').delete().eq('id', id);
+    const { error } = await supabase
+      .from('expenses')
+      .delete()
+      .eq('id', id)
+      .eq('academy_id', academyId);
     if (!error) fetchData();
   };
 

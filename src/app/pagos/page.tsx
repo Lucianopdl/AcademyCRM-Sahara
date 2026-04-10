@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { DashboardShell } from "@/components/dashboard-shell";
+import { useAcademy } from "@/hooks/use-academy";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   CreditCard, 
@@ -76,6 +77,10 @@ export default function PagosPage() {
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
   
+  // Use unified academy context
+  const { academyId, userId, loading: contextLoading } = useAcademy();
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  
   const [paymentForm, setPaymentForm] = useState({
     amount: "",
     method: "cash",
@@ -86,14 +91,23 @@ export default function PagosPage() {
 
   const [selectedMonth, setSelectedMonth] = useState(new Date());
 
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setUserEmail(user.email || null);
+    };
+    fetchUser();
+  }, []);
+
   const fetchData = async () => {
+    if (!academyId) return;
     setLoading(true);
     
     // Calculate month range for current selection
     const start = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1).toISOString();
     const end = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0, 23, 59, 59).toISOString();
 
-    // Fetch payments for selected month
+    // Fetch payments for selected month with strict academy filter
     const { data: payData } = await supabase
       .from('payments')
       .select(`
@@ -102,6 +116,7 @@ export default function PagosPage() {
           full_name
         )
       `)
+      .eq('academy_id', academyId)
       .gte('payment_date', start)
       .lte('payment_date', end)
       .order('payment_date', { ascending: false });
@@ -112,19 +127,26 @@ export default function PagosPage() {
       setMonthlyTotal(total);
     }
 
-    // Fetch students and categories for the modal
-    const { data: stuData } = await supabase.from('students').select('*').eq('status', 'active');
-    if (stuData) setStudents(stuData);
+    // Fetch students and categories for the modal - filtered by academy
+    const { data: stuData } = await supabase.from('students')
+      .select('*')
+      .eq('academy_id', academyId)
+      .eq('status', 'active');
+    if (stuData) setStudents(stuData as any);
 
-    const { data: catData } = await supabase.from('categories').select('*');
+    const { data: catData } = await supabase.from('categories')
+      .select('*')
+      .eq('academy_id', academyId);
     if (catData) setCategories(catData);
 
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchData();
-  }, [selectedMonth]);
+    if (academyId && !contextLoading) {
+      fetchData();
+    }
+  }, [selectedMonth, academyId, contextLoading]);
 
   const handleStudentSelect = (student: Student) => {
     setSelectedStudentId(student.id);
@@ -164,6 +186,7 @@ export default function PagosPage() {
       .from('payments')
       .insert([{
         student_id: selectedStudentId,
+        academy_id: academyId, // Inyectamos el ID de la academia para aislamiento
         amount: amount,
         payment_method: paymentForm.method,
         period_month: paymentForm.month,

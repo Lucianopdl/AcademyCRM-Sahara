@@ -39,29 +39,15 @@ export async function importStudentsAction(academyId: string, students: any[]) {
       const parts = str.split(/[\/\-]/);
       if (parts.length === 3) {
         let [p1, p2, p3] = parts;
-        
-        // Si el primer componente tiene 4 dígitos, asumimos YYYY-MM-DD
         if (p1.length === 4) {
           const d = new Date(`${p1}-${p2.padStart(2, '0')}-${p3.padStart(2, '0')}`);
           return !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : null;
         }
-
-        // De lo contrario, asumimos formato humano (DD-MM-YYYY o MM-DD-YYYY)
         let day = p1;
         let month = p2;
         let year = p3;
-
-        // Limpiar año de 2 dígitos
-        if (year.length === 2) {
-          year = (parseInt(year) > 50 ? "19" : "20") + year;
-        }
-
-        // Si el mes es > 12, probablemente estén invertidos (formato MM/DD/YYYY)
-        if (parseInt(month) > 12 && parseInt(day) <= 12) {
-          [day, month] = [month, day];
-        }
-
-        // Validar y retornar
+        if (year.length === 2) year = (parseInt(year) > 50 ? "19" : "20") + year;
+        if (parseInt(month) > 12 && parseInt(day) <= 12) [day, month] = [month, day];
         const finalDate = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
         if (!isNaN(finalDate.getTime()) && parseInt(month) <= 12 && parseInt(day) <= 31) {
           return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
@@ -70,13 +56,15 @@ export async function importStudentsAction(academyId: string, students: any[]) {
     } catch (e) {
       console.error("Error parsing date:", value, e);
     }
-
-    return null; // Si no es una fecha válida, preferimos null que romper la importación
+    return null;
   };
+
+  if (!academyId || academyId.trim() === "") {
+    return { success: false, message: "ID de academia no válido." };
+  }
 
   try {
     const formattedStudents = students.map(s => {
-      // Normalizar claves a minúsculas y quitar espacios para facilitar mapeo
       const normalized: any = {};
       Object.keys(s).forEach(key => {
         normalized[key.toLowerCase().trim()] = s[key];
@@ -90,30 +78,55 @@ export async function importStudentsAction(academyId: string, students: any[]) {
         dni: normalized["dni"] || normalized["documento"] || null,
         address: normalized["dirección"] || normalized["direccion"] || normalized["address"] || null,
         age: normalized["edad"] ? parseInt(normalized["edad"]) : null,
-        birthdate: formatExcelDate(normalized["fecha nac"] || normalized["fecha de nacimiento"]) || null,
+        birth_date: formatExcelDate(normalized["fecha nac"] || normalized["fecha de nacimiento"]) || null,
         status: 'active',
         enrollment_date: new Date().toISOString()
       };
     });
 
-    const { error } = await supabaseAdmin
-      .from('students')
-      .insert(formattedStudents);
+    // Inserción por lotes (Chunks de 50)
+    const CHUNK_SIZE = 50;
+    let importedCount = 0;
+    let errors = [];
 
-    if (error) throw error;
+    for (let i = 0; i < formattedStudents.length; i += CHUNK_SIZE) {
+      const chunk = formattedStudents.slice(i, i + CHUNK_SIZE);
+      const { error } = await supabaseAdmin
+        .from('students')
+        .insert(chunk);
+
+      if (error) {
+        console.error(`Error en lote ${i / CHUNK_SIZE + 1}:`, error);
+        errors.push(`Lote ${i / CHUNK_SIZE + 1}: ${error.message}`);
+        // Si hay error en un lote, seguimos con el siguiente pero guardamos el error
+      } else {
+        importedCount += chunk.length;
+      }
+    }
 
     revalidatePath('/alumnos');
-    return { success: true, message: `${formattedStudents.length} alumnos importados con éxito.` };
+
+    if (errors.length > 0) {
+      return { 
+        success: importedCount > 0, 
+        message: `Se importaron ${importedCount} alumnos. Algunos fallaron: ${errors[0]}` 
+      };
+    }
+
+    return { success: true, message: `${importedCount} alumnos importados con éxito.` };
   } catch (error: any) {
-    return { success: false, message: error.message };
+    console.error("Error crítico en importación:", error);
+    return { success: false, message: "Error inesperado: " + error.message };
   }
 }
 
-export async function bulkDeleteStudentsAction(studentIds: string[]) {
+
+export async function bulkDeleteStudentsAction(studentIds: string[], academyId: string) {
   try {
     const { error } = await supabaseAdmin
       .from('students')
       .delete()
+      .eq('academy_id', academyId)
       .in('id', studentIds);
 
     if (error) throw error;
@@ -125,11 +138,12 @@ export async function bulkDeleteStudentsAction(studentIds: string[]) {
   }
 }
 
-export async function bulkUpdateStatusAction(studentIds: string[], status: 'active' | 'archived') {
+export async function bulkUpdateStatusAction(studentIds: string[], status: 'active' | 'archived', academyId: string) {
   try {
     const { error } = await supabaseAdmin
       .from('students')
       .update({ status })
+      .eq('academy_id', academyId)
       .in('id', studentIds);
 
     if (error) throw error;
