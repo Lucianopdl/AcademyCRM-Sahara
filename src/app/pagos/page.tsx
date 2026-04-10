@@ -28,7 +28,8 @@ import {
   CheckCircle2,
   ShieldCheck,
   Award,
-  ArrowUpRight
+  ArrowUpRight,
+  Trash2
 } from "lucide-react";
 import html2canvas from "html2canvas-pro";
 import { jsPDF } from "jspdf";
@@ -215,6 +216,26 @@ export default function PagosPage() {
       alert("Error: " + error.message);
     }
     setSaving(false);
+  };
+
+  const handleDeletePayment = async (paymentId: string) => {
+    if (!confirm("¿Estás seguro de que deseas eliminar este registro de pago? Esta acción no se puede deshacer y afectará el balance mensual.")) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('payments')
+        .delete()
+        .eq('id', paymentId)
+        .eq('academy_id', academyId);
+
+      if (error) throw error;
+      
+      fetchData();
+    } catch (error: any) {
+      alert("Error al eliminar el pago: " + error.message);
+    }
   };
 
   const generateReportPdf = async () => {
@@ -504,7 +525,20 @@ export default function PagosPage() {
                         <div className="bg-muted/30 px-8 py-4 rounded-[24px] group-hover:bg-primary/10 transition-all duration-500 border border-transparent group-hover:border-primary/20">
                           <p className="font-serif font-black text-2xl text-primary tracking-tighter">${payment.amount.toLocaleString('es-AR')}</p>
                         </div>
-                        <ChevronRight className="w-5 h-5 text-muted-foreground/20 group-hover:text-primary transition-all duration-500 group-hover:translate-x-1" />
+                        
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeletePayment(payment.id);
+                            }}
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground/20 hover:text-rose-500 hover:bg-rose-500/10 transition-all duration-300"
+                            title="Eliminar registro"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                          <ChevronRight className="w-5 h-5 text-muted-foreground/20 group-hover:text-primary transition-all duration-500 group-hover:translate-x-1" />
+                        </div>
                       </div>
                     </motion.div>
                   ))}
