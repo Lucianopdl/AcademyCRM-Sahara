@@ -639,7 +639,7 @@ export default function AlumnosPage() {
                          (s.dni && s.dni.includes(search));
     
     // Soporte para estados antiguos: 'inactive' ahora se considera 'archived'
-    let currentStatus = s.status || 'active';
+    let currentStatus: string = s.status || 'active';
     if (currentStatus === 'inactive') currentStatus = 'archived';
     
     const matchesStatus = currentStatus === activeTab;
