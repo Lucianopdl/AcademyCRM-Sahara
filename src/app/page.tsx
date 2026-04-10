@@ -15,7 +15,10 @@ import {
   Loader2,
   DollarSign,
   GraduationCap,
-  Sparkles
+  Sparkles,
+  FileText,
+  Award,
+  ShieldCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
@@ -85,76 +88,77 @@ export default function Dashboard() {
 
   return (
     <DashboardShell>
-      <div className="p-4 lg:p-8 flex flex-col h-full gap-6 lg:gap-8">
+      <div className="p-4 md:p-6 lg:px-10 lg:py-6 flex flex-col min-h-screen lg:h-screen lg:max-h-screen gap-4 md:gap-6 relative overflow-hidden bg-background">
+        {/* Decorative Background Elements */}
+        <div className="absolute -top-[10%] -right-[10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
         
-        {/* Header Compacto (Desktop: Visible, Mobile: Oculto porque MobileHeader lo maneja) */}
+        {/* Header Section - Sahara Audit Style - More Compact */}
         <motion.header 
-          initial={{ y: -10, opacity: 0 }}
+          initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="hidden lg:flex items-center justify-between mb-2 shrink-0"
+          className="flex flex-col md:flex-row md:items-end justify-between gap-4 shrink-0 relative z-20"
         >
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[#E67E22] font-bold text-[9px] uppercase tracking-[0.2em] bg-[#E67E22]/10 px-2 py-0.5 rounded-full border border-[#E67E22]/5">
-                <Sparkles className="w-2.5 h-2.5 inline mr-1" /> General
-              </span>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <div className="px-2 py-0.5 bg-primary/10 border border-primary/20 rounded-full flex items-center gap-1.5 shadow-sm">
+                <Sparkles className="w-2.5 h-2.5 text-primary animate-pulse" />
+                <span className="text-[8px] font-black uppercase tracking-[0.3em] text-primary">Inteligencia de Gestión</span>
+              </div>
             </div>
-            <h1 className="text-3xl font-serif font-bold tracking-tight text-foreground">
-              ¡Hola, <span className="text-[#E67E22]">{userFirstName}</span>!
+            <h1 className="text-3xl md:text-5xl font-serif font-black tracking-tighter text-foreground leading-[1.1]">
+              ¡Hola, <span className="text-primary italic font-normal">{userFirstName}</span>!
             </h1>
+            <p className="text-[8px] font-black uppercase tracking-[0.5em] text-muted-foreground/40 ml-1">Dashboard v3.0 • Sahara Audit</p>
           </div>
           
           <div className="flex items-center gap-3">
-             <div className="relative hidden md:block">
-               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#847365]/50" />
+             <div className="relative group hidden md:block">
+               <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/30 group-focus-within:text-primary transition-all" />
                <input 
-                placeholder="Buscar..." 
-                className="bg-[#F5F1EE] border-none rounded-xl pl-9 pr-4 py-2 h-10 text-xs focus:ring-1 focus:ring-[#E67E22]/30 w-48 transition-all"
+                placeholder="Explorar..." 
+                className="bg-card/50 border border-border/40 rounded-2xl pl-12 pr-6 py-3 h-12 text-[10px] font-medium focus:ring-4 focus:ring-primary/5 w-56 shadow-sm outline-none transition-all"
               />
              </div>
-             <Button className="rounded-xl h-10 w-10 bg-[#F5F1EE] text-[#847365] hover:bg-white hover:shadow-sm border-none">
-                <Bell className="w-4 h-4" />
+             <Button variant="outline" className="rounded-full h-12 w-12 bg-card border-border/40 text-muted-foreground hover:bg-white hover:text-primary transition-all shadow-sm relative group">
+                <Bell className="w-4 h-4 transition-transform group-hover:rotate-12" />
+                <span className="absolute top-3 right-3 w-1.5 h-1.5 bg-rose-500 rounded-full border-2 border-background" />
              </Button>
           </div>
         </motion.header>
-
-        {/* Bienvenida Táctil (Móvil) */}
-        <div className="lg:hidden mb-2">
-           <h2 className="text-2xl font-serif font-bold text-foreground">
-             ¡Hola, <span className="text-[#E67E22] font-black">{userFirstName}</span>! 👋
-           </h2>
-           <p className="text-xs text-secondary/60 font-bold uppercase tracking-widest mt-1">Dashboard Principal</p>
-        </div>
 
         <motion.div 
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="flex-1 flex flex-col gap-6"
+          className="flex-1 flex flex-col gap-6 overflow-y-auto lg:overflow-hidden scrollbar-none pr-1"
         >
-          {/* Stats Row - Adaptable */}
+          {/* Metrics Intelligence Palette - More Compact Padding */}
           <section className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 shrink-0">
             {[
-              { label: "Estudiantes", value: stats.studentsCount, icon: Users, color: "bg-[#E67E22]", accent: "text-[#E67E22]" },
-              { label: "Ingresos", value: `$${stats.paymentsTotal.toLocaleString()}`, icon: TrendingUp, color: "bg-[#27AE60]", accent: "text-[#27AE60]" },
-              { label: "Clases", value: stats.classesCount, icon: GraduationCap, color: "bg-[#2D241E]", accent: "text-[#2D241E]" }
+              { label: "Comunidad", value: stats.studentsCount, icon: Users, accent: "primary" },
+              { label: "Recaudación", value: `$${stats.paymentsTotal.toLocaleString()}`, icon: TrendingUp, accent: "emerald" },
+              { label: "Carga Académica", value: stats.classesCount, icon: FileText, accent: "slate" }
             ].map((stat, i) => (
               <motion.div 
                 key={i} 
                 variants={itemVariants}
-                whileHover={{ y: -3 }}
-                className="bg-card border border-border/50 p-5 rounded-[28px] shadow-sm flex items-center gap-5 group active:scale-[0.98] transition-all"
+                whileHover={{ y: -8, scale: 1.02 }}
+                className="bg-card/40 backdrop-blur-xl border border-border/50 p-6 rounded-[32px] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.05)] flex items-center gap-6 group transition-all duration-700 active:scale-[0.98]"
               >
-                <div className={cn("p-4 rounded-2xl shadow-md text-white transition-transform group-hover:scale-105", stat.color)}>
-                  <stat.icon className="w-6 h-6" />
+                <div className={cn(
+                   "w-12 h-12 rounded-xl shadow-2xl flex items-center justify-center text-white transition-all duration-700 group-hover:rotate-6",
+                   stat.accent === 'primary' ? 'bg-primary shadow-primary/20' : 
+                   stat.accent === 'emerald' ? 'bg-emerald-500 shadow-emerald-200' : 'bg-slate-900 shadow-slate-200'
+                )}>
+                  <stat.icon className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary/50 mb-1">{stat.label}</p>
+                  <p className="text-[8px] font-black uppercase tracking-[0.4em] text-muted-foreground/40 mb-1 truncate">{stat.label}</p>
                   <div className="flex items-baseline gap-2">
                     {loading ? (
-                      <div className="h-6 w-12 bg-black/5 animate-pulse rounded" />
+                      <div className="h-6 w-20 bg-muted animate-pulse rounded-lg" />
                     ) : (
-                      <h3 className="text-3xl font-serif font-bold tracking-tighter text-foreground">{stat.value}</h3>
+                      <h3 className="text-2xl md:text-3xl font-serif font-black tracking-tighter text-foreground truncate">{stat.value}</h3>
                     )}
                   </div>
                 </div>
@@ -162,76 +166,94 @@ export default function Dashboard() {
             ))}
           </section>
 
-          {/* Body Content */}
-          <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 pb-20 lg:pb-0">
+          {/* Core Content Grid - Balanced heights */}
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 pb-20 lg:pb-0 overflow-visible">
             
-            {/* Banner Principal */}
+            {/* Editorial Brand Banner - Scaled Down */}
             <motion.div 
                 variants={itemVariants}
-                className="lg:col-span-8 relative bg-gradient-to-br from-[#D35400] to-[#E67E22] p-8 lg:p-12 rounded-[40px] shadow-xl shadow-[#E67E22]/10 overflow-hidden flex flex-col justify-center min-h-[350px] lg:min-h-0"
+                className="lg:col-span-12 xl:col-span-8 relative bg-slate-900 p-8 md:p-10 rounded-[40px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col justify-center min-h-[240px] lg:min-h-0 group border border-white/5"
             >
-                <School className="absolute bottom-[-10%] right-[-5%] w-64 h-64 opacity-20 rotate-12" />
+                <div className="absolute top-0 right-0 p-10 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity duration-1000">
+                   <Award className="w-64 h-64 rotate-12" />
+                </div>
                 
-                <div className="relative z-10">
-                  <div className="bg-white/20 backdrop-blur-sm px-4 py-1.5 rounded-full w-fit text-white text-[9px] font-black uppercase tracking-[0.2em] mb-6 border border-white/20">
-                    Sistemas Norte
+                <div className="relative z-10 max-w-xl">
+                  <div className="bg-primary px-3 py-1 rounded-lg w-fit text-primary-foreground text-[8px] font-black uppercase tracking-[0.4em] mb-4 shadow-lg">
+                    Propiedad Intelectual: {academyInfo.name}
                   </div>
-                  <h3 className="text-4xl lg:text-5xl font-serif font-bold text-white mb-4 tracking-tight max-w-md leading-[1.1]">
-                    Gestión Académica de Vanguardia.
+                  <h3 className="text-3xl md:text-5xl font-serif font-black text-white mb-4 tracking-tighter leading-[0.95]">
+                    Gestión <span className="text-primary italic font-normal">Auditiva</span> de Alto Desempeño.
                   </h3>
-                  <p className="text-white/80 text-base max-w-sm font-medium leading-relaxed mb-10 opacity-90">
-                    Administra tus clases y cobros con la elegancia que tu academia merece.
+                  <p className="text-white/40 text-[10px] md:text-xs font-medium leading-relaxed mb-6 uppercase tracking-[0.2em] max-w-md">
+                    Excelencia operativa para instituciones que transforman el talento en arte.
                   </p>
-                  <Button 
-                    onClick={() => window.location.href='/clases'} 
-                    className="bg-white text-[#D35400] hover:bg-neutral-50 px-8 h-14 rounded-2xl font-black text-base shadow-2xl active:scale-95 transition-all w-full md:w-fit"
-                  >
-                    Ver Clases
-                    <ArrowUpRight className="w-5 h-5 ml-2" />
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button 
+                      onClick={() => window.location.href='/clases'} 
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 rounded-xl font-serif font-black text-sm shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
+                    >
+                      Explorar Clases
+                      <ArrowUpRight className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => window.location.href='/alumnos'} 
+                      className="bg-white/5 border border-white/10 hover:bg-white/10 text-white px-6 py-3 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all"
+                    >
+                      Censo de Alumnos
+                    </button>
+                  </div>
                 </div>
             </motion.div>
 
-            {/* Quick Actions */}
-            <div className="lg:col-span-4 flex flex-col gap-4 lg:gap-6">
+            {/* Tactical Fast Lanes */}
+            <div className="lg:col-span-12 xl:col-span-4 flex flex-col sm:grid sm:grid-cols-2 xl:flex xl:flex-col gap-4 md:gap-6">
                 <motion.div 
                   variants={itemVariants}
-                  whileHover={{ x: 5 }}
+                  whileHover={{ scale: 1.01 }}
                   onClick={() => window.location.href='/pagos'}
-                  className="flex-1 bg-[#2D241E] text-white p-7 rounded-[32px] flex flex-col justify-between cursor-pointer group shadow-lg shadow-black/10 active:scale-[0.98] transition-all min-h-[160px]"
+                  className="flex-1 bg-card/60 backdrop-blur-xl border border-primary/20 p-6 rounded-[32px] flex flex-col justify-between cursor-pointer group shadow-lg active:scale-[0.98] transition-all min-h-[140px]"
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-[#E67E22]">
-                    <DollarSign className="w-7 h-7" />
+                  <div className="w-10 h-10 rounded-lg bg-primary shadow-lg shadow-primary/20 flex items-center justify-center text-primary-foreground">
+                    <DollarSign className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-xl font-serif font-bold mb-1">Registrar Cobro</h4>
-                    <p className="text-[10px] text-white/30 font-black uppercase tracking-widest font-sans">Administración de Pagos</p>
+                    <h4 className="text-xl font-serif font-black mb-1 tracking-tighter">Registrar <span className="text-primary italic font-normal">Cobro</span></h4>
+                    <p className="text-[8px] text-muted-foreground/40 font-black uppercase tracking-[0.4em]">Tesorería</p>
                   </div>
                 </motion.div>
 
                 <motion.div 
                   variants={itemVariants}
-                  whileHover={{ x: 5 }}
+                  whileHover={{ scale: 1.01 }}
                   onClick={() => window.location.href='/alumnos/nuevo'}
-                  className="flex-1 bg-card border border-border/50 p-7 rounded-[32px] flex flex-col justify-between cursor-pointer group shadow-sm hover:border-[#E67E22]/30 active:scale-[0.98] transition-all min-h-[160px]"
+                  className="flex-1 bg-muted/20 border border-border/50 p-6 rounded-[32px] flex flex-col justify-between cursor-pointer group shadow-inner active:scale-[0.98] transition-all min-h-[140px]"
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-[#E67E22]/10 flex items-center justify-center text-[#E67E22]">
-                    <Plus className="w-7 h-7" />
+                  <div className="w-10 h-10 rounded-lg bg-slate-900 flex items-center justify-center text-white">
+                    <Plus className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-xl font-serif font-bold text-foreground mb-1 text-[#2D241E]">Nuevo Alumno</h4>
-                    <p className="text-[10px] text-secondary/40 font-black uppercase tracking-widest font-sans">Inscripción rápida</p>
+                    <h4 className="text-xl font-serif font-black text-foreground mb-1 tracking-tighter">Nueva <span className="text-slate-400 italic font-normal">Inscripción</span></h4>
+                    <p className="text-[8px] text-muted-foreground/40 font-black uppercase tracking-[0.4em]">Censo</p>
                   </div>
                 </motion.div>
             </div>
           </div>
         </motion.div>
 
-        {/* Footer Minimal */}
-        <footer className="mt-auto py-6 text-center shrink-0 border-t border-border/10 hidden lg:block">
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-secondary/30">
-               © 2026 {academyInfo.name} • El arte de gestionar
-            </p>
+        {/* Audit Certification Footer */}
+        <footer className="mt-auto py-6 flex items-center justify-between border-t border-border/10 shrink-0 relative z-10 px-4">
+            <div className="flex items-center gap-3">
+               <ShieldCheck className="w-3.5 h-3.5 text-primary/40" />
+               <p className="text-[8px] font-black uppercase tracking-[0.4em] text-muted-foreground/30">
+                 Sahara Security System • {academyInfo.name}
+               </p>
+            </div>
+            <div className="hidden md:flex items-center gap-6">
+               <p className="text-[8px] font-black uppercase tracking-[0.5em] text-muted-foreground/20 italic">
+                  Digitalizado por Sistemas Norte
+               </p>
+            </div>
         </footer>
       </div>
     </DashboardShell>

@@ -227,159 +227,200 @@ export default function AsistenciasPage() {
 
   return (
     <DashboardShell>
-      <div className="p-4 lg:p-8">
+      <div className="flex-1 overflow-y-auto px-4 md:px-16 lg:px-24 py-8 lg:py-12">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8">
-            <div>
-              <h1 className="text-3xl font-serif font-bold text-[#111]">Asistencias</h1>
-              <p className="text-[#847365] mt-1 text-sm font-medium">Control diario por disciplina.</p>
-            </div>
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-12">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+            >
+              <h1 className="text-4xl md:text-5xl font-serif font-medium text-foreground tracking-tight italic">
+                Asistencias
+              </h1>
+              <p className="text-muted-foreground mt-2 text-lg font-light">
+                Control diario de presencia por disciplina.
+              </p>
+            </motion.div>
 
-            <div className="flex items-center gap-2 w-full lg:w-auto">
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-3 w-full lg:w-auto"
+            >
               <Button
                 variant="outline"
                 size="icon"
-                className="h-10 w-10 shrink-0"
+                className="h-12 w-12 rounded-2xl border-border/40 bg-card/30 backdrop-blur-xl hover:bg-card/50"
                 onClick={() => setSelectedDate(subDays(selectedDate, 1))}
               >
                 <ChevronLeft className="w-5 h-5" />
               </Button>
-              <div className="flex-1 lg:flex-none flex items-center gap-2 bg-white border border-[#E8E2DC] px-4 py-2.5 rounded-xl font-bold shadow-sm justify-center text-sm">
-                <Calendar className="w-4 h-4 text-[#E67E22]" />
-                <span className="capitalize">{format(selectedDate, "eee dd 'de' MMMM", { locale: es })}</span>
+              
+              <div className="flex-1 lg:flex-none flex items-center gap-3 bg-card/30 backdrop-blur-xl border border-border/40 px-6 py-3 rounded-2xl shadow-xl shadow-black/5 justify-center min-w-[200px]">
+                <Calendar className="w-5 h-5 text-primary" />
+                <span className="capitalize font-medium tracking-tight text-foreground">
+                  {format(selectedDate, "eeee dd 'de' MMMM", { locale: es })}
+                </span>
               </div>
+
               <Button
                 variant="outline"
                 size="icon"
-                className="h-10 w-10 shrink-0"
+                className="h-12 w-12 rounded-2xl border-border/40 bg-card/30 backdrop-blur-xl hover:bg-card/50"
                 onClick={() => setSelectedDate(addDays(selectedDate, 1))}
               >
                 <ChevronRight className="w-5 h-5" />
               </Button>
+
               {!isSameDay(selectedDate, startOfToday()) && (
-                <Button variant="ghost" className="text-xs font-bold" onClick={() => setSelectedDate(startOfToday())}>
+                <Button 
+                  variant="ghost" 
+                  className="px-4 font-bold text-primary hover:bg-primary/10 rounded-xl"
+                  onClick={() => setSelectedDate(startOfToday())}
+                >
                   Hoy
                 </Button>
               )}
-            </div>
+            </motion.div>
           </div>
 
           {/* Filters & Actions */}
-          <div className="flex flex-col sm:flex-row gap-3 mb-8">
-            <div className="relative flex-1">
-              <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#847365]/40" />
+          <div className="flex flex-col sm:flex-row gap-4 mb-10">
+            <div className="relative flex-1 group">
+              <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
+                <Filter className="w-5 h-5 text-muted-foreground/40 group-focus-within:text-primary transition-colors" />
+              </div>
               <select
                 value={selectedClassId}
                 onChange={(e) => setSelectedClassId(e.target.value)}
-                className="w-full h-12 lg:h-14 pl-12 pr-4 bg-white border border-[#E8E2DC] rounded-2xl text-sm font-bold focus:ring-[#E67E22] appearance-none cursor-pointer shadow-sm"
+                className="w-full h-14 pl-14 pr-10 bg-card/30 backdrop-blur-xl border border-border/40 rounded-[24px] text-base font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary/40 appearance-none cursor-pointer shadow-xl shadow-black/5 text-foreground transition-all"
               >
-                <option value="all">Elegir Clase...</option>
+                <option value="all" className="bg-background">Elegir Clase...</option>
                 {classes.map(cls => (
-                  <option key={cls.id} value={cls.id}>{cls.name}</option>
+                  <option key={cls.id} value={cls.id} className="bg-background">{cls.name}</option>
                 ))}
               </select>
+              <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none">
+                <ChevronRight className="w-5 h-5 text-muted-foreground/40 group-focus-within:rotate-90 transition-transform" />
+              </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <Button
                 variant="outline"
-                className="flex-1 sm:flex-none h-12 lg:h-14 rounded-2xl gap-2 font-bold px-6"
+                className="flex-1 sm:flex-none h-14 rounded-[24px] gap-3 font-semibold px-8 border-border/40 bg-card/30 backdrop-blur-xl hover:bg-card/50 transition-all border-dashed"
                 onClick={markAllPresent}
                 disabled={innerLoading || selectedClassId === "all" || filteredStudents.length === 0}
               >
-                <Check className="w-4 h-4" />
-                <span className="hidden sm:inline">Todos Presentes</span>
-                <span className="sm:hidden">Todos</span>
+                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                <span>Presentes</span>
               </Button>
 
               <Button
-                variant="primary"
-                className="flex-1 sm:flex-none h-12 lg:h-14 rounded-2xl shadow-lg gap-2 font-bold px-6 bg-[#E67E22] text-white hover:bg-[#D35400] transition-all active:scale-95"
+                className="flex-1 sm:flex-none h-14 rounded-[24px] shadow-2xl shadow-primary/20 gap-3 font-bold px-10 bg-primary text-primary-foreground hover:brightness-110 transition-all active:scale-95"
                 onClick={saveAttendance}
                 disabled={saving || filteredStudents.length === 0 || selectedClassId === "all"}
               >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                {savingStatus === 'success' ? '¡Listo!' : 'Guardar'}
+                {saving ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : savingStatus === 'success' ? (
+                  <CheckCircle2 className="w-5 h-5" />
+                ) : (
+                  <Save className="w-5 h-5" />
+                )}
+                <span>{savingStatus === 'success' ? 'Guardado' : 'Guardar'}</span>
               </Button>
             </div>
           </div>
 
           {/* Attendance List */}
-          <div className="space-y-4 mb-20">
+          <div className="space-y-6 mb-24">
             {innerLoading ? (
-              <div className="p-20 flex flex-col items-center justify-center gap-4 text-[#847365]/40">
-                <Loader2 className="w-8 h-8 animate-spin" />
-                <p className="animate-pulse font-bold text-sm">Cargando alumnos...</p>
+              <div className="p-32 flex flex-col items-center justify-center gap-6 text-muted-foreground/40">
+                <div className="relative">
+                  <Loader2 className="w-12 h-12 animate-spin text-primary" />
+                  <div className="absolute inset-0 blur-xl bg-primary/20 animate-pulse" />
+                </div>
+                <p className="animate-pulse font-medium text-lg tracking-tight">Recuperando registros...</p>
               </div>
             ) : selectedClassId === "all" ? (
-              <div className="p-16 flex flex-col items-center justify-center gap-4 text-[#847365]/40 text-center bg-white/50 rounded-[40px] border-2 border-dashed border-[#847365]/10">
-                <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-inner mb-2">
-                  <ClipboardCheck className="w-10 h-10 text-[#847365]/20" />
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-20 flex flex-col items-center justify-center gap-6 text-center bg-card/20 backdrop-blur-xl rounded-[48px] border border-border/40 shadow-2xl relative overflow-hidden group"
+              >
+                <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="w-24 h-24 rounded-full bg-background flex items-center justify-center shadow-inner relative z-10 border border-border/20">
+                  <ClipboardCheck className="w-10 h-10 text-primary/40" />
                 </div>
-                <p className="text-xl font-serif font-bold text-[#3A3028]">Inicia el Registro</p>
-                <p className="text-xs max-w-xs font-medium">Seleccioná una clase para comenzar a tomar asistencia hoy.</p>
-              </div>
+                <div className="relative z-10">
+                  <h3 className="text-3xl font-serif font-medium text-foreground mb-2 italic">Listo para Auditar</h3>
+                  <p className="text-muted-foreground max-w-sm mx-auto font-light text-lg">
+                    Seleccione una clase para comenzar el control de asistencia del día.
+                  </p>
+                </div>
+              </motion.div>
             ) : filteredStudents.length === 0 ? (
-              <div className="p-16 flex flex-col items-center justify-center gap-4 text-[#847365]/40 text-center">
-                <AlertCircle className="w-12 h-12" />
-                <p className="font-bold">No hay alumnos inscriptos.</p>
+              <div className="p-24 flex flex-col items-center justify-center gap-6 text-center bg-card/10 rounded-[48px] border border-border/40">
+                <AlertCircle className="w-16 h-16 text-muted-foreground/20" />
+                <p className="text-xl font-medium text-muted-foreground">No se encontraron alumnos inscriptos.</p>
               </div>
             ) : (
               <>
                 {/* Mobile View: Cards */}
-                <div className="grid grid-cols-1 gap-3 md:hidden">
+                <div className="grid grid-cols-1 gap-4 md:hidden">
                   {filteredStudents.map((student) => {
                     const att = attendanceData[student.id];
                     return (
                       <motion.div 
                         key={student.id}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white rounded-3xl p-5 border border-[#847365]/10 shadow-sm"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-card/30 backdrop-blur-xl rounded-[32px] p-6 border border-border/40 shadow-xl"
                       >
-                        <div className="flex items-center gap-3 mb-4">
+                        <div className="flex items-center gap-4 mb-6">
                           <div className={cn(
-                            "w-10 h-10 rounded-xl flex items-center justify-center text-white font-serif font-extrabold text-lg shadow-sm transition-colors",
-                            att?.status === 'present' ? 'bg-emerald-500' : 
-                            att?.status === 'absent' ? 'bg-rose-500' :
-                            att?.status === 'late' ? 'bg-amber-500' :
-                            att?.status === 'justified' ? 'bg-sky-500' : 'bg-[#847365]'
+                            "w-12 h-12 rounded-2xl flex items-center justify-center text-white font-serif font-extrabold text-xl shadow-lg transition-all duration-500",
+                            att?.status === 'present' ? 'bg-emerald-500 shadow-emerald-500/20' : 
+                            att?.status === 'absent' ? 'bg-rose-500 shadow-rose-500/20' :
+                            att?.status === 'late' ? 'bg-amber-500 shadow-amber-500/20' :
+                            att?.status === 'justified' ? 'bg-sky-500 shadow-sky-500/20' : 'bg-muted border border-border/40'
                           )}>
                             {student.full_name.charAt(0)}
                           </div>
-                          <span className="font-bold text-[#111] leading-tight">{student.full_name}</span>
+                          <span className="font-semibold text-lg text-foreground tracking-tight">{student.full_name}</span>
                         </div>
                         
-                        <div className="grid grid-cols-4 gap-2">
-                          <button 
-                            onClick={() => handleStatusChange(student.id, 'present')}
-                            className={cn("flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all", att?.status === 'present' ? "bg-emerald-500 text-white shadow-lg" : "bg-emerald-50 text-emerald-600")}
-                          >
-                            <Check className="w-5 h-5" />
-                            <span className="text-[8px] font-black uppercase">Pres</span>
-                          </button>
-                          <button 
-                            onClick={() => handleStatusChange(student.id, 'absent')}
-                            className={cn("flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all", att?.status === 'absent' ? "bg-rose-500 text-white shadow-lg" : "bg-rose-50 text-rose-600")}
-                          >
-                            <X className="w-5 h-5" />
-                            <span className="text-[8px] font-black uppercase">Aus</span>
-                          </button>
-                          <button 
-                            onClick={() => handleStatusChange(student.id, 'late')}
-                            className={cn("flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all", att?.status === 'late' ? "bg-amber-500 text-white shadow-lg" : "bg-amber-50 text-amber-600")}
-                          >
-                            <Clock className="w-5 h-5" />
-                            <span className="text-[8px] font-black uppercase">Tard</span>
-                          </button>
-                          <button 
-                            onClick={() => handleStatusChange(student.id, 'justified')}
-                            className={cn("flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all", att?.status === 'justified' ? "bg-sky-500 text-white shadow-lg" : "bg-sky-50 text-sky-600")}
-                          >
-                            <HelpCircle className="w-5 h-5" />
-                            <span className="text-[8px] font-black uppercase">Just</span>
-                          </button>
+                        <div className="grid grid-cols-2 gap-3">
+                          <AttendanceButtonMobile 
+                            active={att?.status === 'present'} 
+                            onClick={() => handleStatusChange(student.id, 'present')} 
+                            icon={<Check className="w-5 h-5" />} 
+                            label="Presente" 
+                            variant="success" 
+                          />
+                          <AttendanceButtonMobile 
+                            active={att?.status === 'absent'} 
+                            onClick={() => handleStatusChange(student.id, 'absent')} 
+                            icon={<X className="w-5 h-5" />} 
+                            label="Ausente" 
+                            variant="danger" 
+                          />
+                          <AttendanceButtonMobile 
+                            active={att?.status === 'late'} 
+                            onClick={() => handleStatusChange(student.id, 'late')} 
+                            icon={<Clock className="w-5 h-5" />} 
+                            label="Tarde" 
+                            variant="warning" 
+                          />
+                          <AttendanceButtonMobile 
+                            active={att?.status === 'justified'} 
+                            onClick={() => handleStatusChange(student.id, 'justified')} 
+                            icon={<HelpCircle className="w-5 h-5" />} 
+                            label="Justif." 
+                            variant="info" 
+                          />
                         </div>
                       </motion.div>
                     );
@@ -387,28 +428,28 @@ export default function AsistenciasPage() {
                 </div>
 
                 {/* Desktop View: Table */}
-                <div className="hidden md:block bg-white rounded-[40px] border border-[#847365]/10 shadow-sm overflow-hidden">
+                <div className="hidden md:block bg-card/20 backdrop-blur-xl rounded-[40px] border border-border/40 shadow-2xl shadow-black/10 overflow-hidden">
                   <table className="w-full text-left">
                     <thead>
-                      <tr className="border-b border-[#847365]/5 bg-[#F5F1EE]/30">
-                        <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-[#847365]">Alumno</th>
-                        <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-[#847365] text-center">Asistencia</th>
+                      <tr className="border-b border-border/40 bg-card/30">
+                        <th className="px-10 py-6 text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Alumno</th>
+                        <th className="px-10 py-6 text-xs font-bold uppercase tracking-widest text-muted-foreground/60 text-center">Registro de Asistencia</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#847365]/5">
+                    <tbody className="divide-y divide-border/20">
                       {filteredStudents.map((student) => {
                         const att = attendanceData[student.id];
                         return (
-                          <tr key={student.id} className="hover:bg-[#F5F1EE]/20 transition-colors">
-                            <td className="px-8 py-5">
-                              <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-xl bg-[#847365]/10 flex items-center justify-center text-[#847365] font-serif font-bold">
+                          <tr key={student.id} className="hover:bg-primary/5 transition-all duration-300 group">
+                            <td className="px-10 py-6">
+                              <div className="flex items-center gap-5">
+                                <div className="w-12 h-12 rounded-2xl bg-background border border-border/40 flex items-center justify-center text-foreground font-serif font-bold text-lg group-hover:scale-110 group-hover:rotate-3 transition-transform">
                                   {student.full_name.charAt(0)}
                                 </div>
-                                <span className="font-bold text-[#111]">{student.full_name}</span>
+                                <span className="font-semibold text-lg text-foreground tracking-tight">{student.full_name}</span>
                               </div>
                             </td>
-                            <td className="px-8 py-5">
+                            <td className="px-10 py-6">
                               <div className="flex items-center justify-center gap-3">
                                 <AttendanceButton active={att?.status === 'present'} onClick={() => handleStatusChange(student.id, 'present')} icon={<Check className="w-4 h-4" />} label="Presente" variant="success" />
                                 <AttendanceButton active={att?.status === 'absent'} onClick={() => handleStatusChange(student.id, 'absent')} icon={<X className="w-4 h-4" />} label="Ausente" variant="danger" />
@@ -427,12 +468,29 @@ export default function AsistenciasPage() {
           </div>
 
           {/* Legend */}
-          <div className="mt-6 flex flex-wrap gap-4 justify-center text-xs text-secondary/60">
-            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Presente</div>
-            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-rose-500" /> Ausente</div>
-            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500" /> Tarde</div>
-            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-sky-500" /> Justificado</div>
-          </div>
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="mt-12 flex flex-wrap gap-8 justify-center items-center py-6 px-10 bg-card/10 backdrop-blur-md rounded-[32px] border border-border/40 max-w-3xl mx-auto shadow-xl"
+          >
+            <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground/80 lowercase italic font-serif">
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]" /> 
+              Presente
+            </div>
+            <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground/80 lowercase italic font-serif">
+              <div className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.5)]" /> 
+              Ausente
+            </div>
+            <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground/80 lowercase italic font-serif">
+              <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.5)]" /> 
+              Tarde
+            </div>
+            <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground/80 lowercase italic font-serif">
+              <div className="w-2.5 h-2.5 rounded-full bg-sky-500 shadow-[0_0_12px_rgba(14,165,233,0.5)]" /> 
+              Justificado
+            </div>
+          </motion.div>
         </div>
       </div>
     </DashboardShell>
@@ -447,24 +505,53 @@ function AttendanceButton({ active, onClick, icon, label, variant }: {
   variant: 'success' | 'danger' | 'warning' | 'info'
 }) {
   const variantStyles = {
-    success: active ? "bg-emerald-500 text-white shadow-emerald-500/20" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400",
-    danger: active ? "bg-rose-500 text-white shadow-rose-500/20" : "bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-400",
-    warning: active ? "bg-amber-500 text-white shadow-amber-500/20" : "bg-amber-50 text-amber-600 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400",
-    info: active ? "bg-sky-500 text-white shadow-sky-500/20" : "bg-sky-50 text-sky-600 hover:bg-sky-100 dark:bg-sky-500/10 dark:text-sky-400",
+    success: active ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 border-emerald-500/50" : "bg-emerald-500/5 text-emerald-500 border-emerald-500/10 hover:bg-emerald-500/10",
+    danger: active ? "bg-rose-500 text-white shadow-lg shadow-rose-500/20 border-rose-500/50" : "bg-rose-500/5 text-rose-500 border-rose-500/10 hover:bg-rose-500/10",
+    warning: active ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20 border-amber-500/50" : "bg-amber-500/5 text-amber-500 border-amber-500/10 hover:bg-amber-500/10",
+    info: active ? "bg-sky-500 text-white shadow-lg shadow-sky-500/20 border-sky-500/50" : "bg-sky-500/5 text-sky-500 border-sky-500/10 hover:bg-sky-500/10",
   };
 
   return (
     <button
       onClick={onClick}
-      title={label}
       className={cn(
-        "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300",
+        "flex items-center gap-2.5 px-5 py-2.5 rounded-2xl text-sm font-semibold transition-all duration-300 border",
         variantStyles[variant],
-        active ? "ring-2 ring-offset-2 ring-offset-background" : "opacity-60 hover:opacity-100"
+        !active && "opacity-60 grayscale-[0.5] hover:opacity-100 hover:grayscale-0",
+        active && "scale-105"
       )}
     >
       {icon}
-      <span className={cn(active ? "inline" : "hidden md:inline")}>{label}</span>
+      <span>{label}</span>
+    </button>
+  );
+}
+
+function AttendanceButtonMobile({ active, onClick, icon, label, variant }: {
+  active: boolean,
+  onClick: () => void,
+  icon: React.ReactNode,
+  label: string,
+  variant: 'success' | 'danger' | 'warning' | 'info'
+}) {
+  const variantStyles = {
+    success: active ? "bg-emerald-500 text-white" : "bg-card/50 text-emerald-500/60 border-emerald-500/10",
+    danger: active ? "bg-rose-500 text-white" : "bg-card/50 text-rose-500/60 border-rose-500/10",
+    warning: active ? "bg-amber-500 text-white" : "bg-card/50 text-amber-500/60 border-amber-500/10",
+    info: active ? "bg-sky-500 text-white" : "bg-card/50 text-sky-500/60 border-sky-500/10",
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex flex-col items-center justify-center gap-1.5 p-4 rounded-3xl transition-all duration-300 border border-transparent",
+        variantStyles[variant],
+        active ? "shadow-lg scale-105" : "hover:bg-card hover:border-border/20"
+      )}
+    >
+      {icon}
+      <span className="text-[10px] font-bold uppercase tracking-widest">{label}</span>
     </button>
   );
 }

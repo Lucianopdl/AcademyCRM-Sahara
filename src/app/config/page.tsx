@@ -97,201 +97,282 @@ export default function ConfigPage() {
   ];
 
   return (
-    <div className="flex bg-[#FDFCFB] min-h-screen text-[#2D241E] font-sans">
+    <div className="flex bg-background min-h-screen text-foreground font-sans">
       <Sidebar />
-      <main className="flex-1 p-6 lg:p-12 overflow-y-auto">
-        <header className="mb-10 animate-in fade-in slide-in-from-top-4 duration-700">
-          <div className="flex items-center gap-3 mb-2 text-[#847365]/60">
-             <Settings className="w-5 h-5 shadow-sm" />
-             <span className="text-[11px] font-black uppercase tracking-[0.2em]">Configuración del Sistema</span>
-          </div>
-          <h1 className="text-5xl font-serif font-black text-[#2D241E] tracking-tight">Tu Academia</h1>
-          <p className="text-[#847365] font-medium opacity-70 max-w-lg mt-2 leading-relaxed">Personaliza el motor de tu institución. Estos cambios se reflejarán en todos tus recibos y paneles.</p>
+      <main className="flex-1 overflow-y-auto px-4 md:px-16 lg:px-24 py-12">
+        <header className="mb-14">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center gap-3 mb-4 text-primary"
+          >
+             <Settings className="w-6 h-6 animate-spin-slow" />
+             <span className="text-xs font-bold uppercase tracking-[0.3em]">Configuración del Sistema</span>
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <h1 className="text-5xl md:text-6xl font-serif font-medium tracking-tight italic text-foreground">
+              Tu Academia
+            </h1>
+            <p className="text-muted-foreground font-light text-xl mt-4 max-w-2xl leading-relaxed">
+              Personaliza el motor de tu institución. Estos cambios se reflejarán en todos tus recibos y paneles administrativos.
+            </p>
+          </motion.div>
         </header>
 
         <div className="flex flex-col lg:flex-row gap-8 items-start max-w-6xl">
           {/* Navegación Lateral de Config */}
-          <nav className="w-full lg:w-64 space-y-2 shrink-0">
+          <motion.nav 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+            className="w-full lg:w-72 space-y-3 shrink-0"
+          >
              {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
-                    "w-full flex items-center justify-between p-4 rounded-2xl font-bold transition-all group",
+                    "w-full flex items-center justify-between p-5 rounded-[24px] font-semibold transition-all duration-300 group relative overflow-hidden text-lg tracking-tight",
                     activeTab === tab.id 
-                      ? "bg-white text-[#2D241E] shadow-warm border border-[#847365]/5" 
-                      : "text-[#847365]/60 hover:bg-[#F5F1EE] hover:text-[#2D241E]"
+                      ? "bg-primary text-primary-foreground shadow-2xl shadow-primary/20 scale-[1.02]" 
+                      : "text-muted-foreground bg-card/20 backdrop-blur-md border border-border/40 hover:bg-card/40 hover:text-foreground"
                   )}
                 >
-                  <div className="flex items-center gap-3">
-                    <tab.icon className={cn("w-5 h-5", activeTab === tab.id ? "text-[#E67E22]" : "text-[#847365]/40 group-hover:text-[#E67E22]/60")} />
-                    <span className="text-sm tracking-tight">{tab.label}</span>
+                  <div className="flex items-center gap-4 relative z-10">
+                    <tab.icon className={cn("w-6 h-6", activeTab === tab.id ? "text-primary-foreground" : "text-muted-foreground group-hover:text-primary transition-colors")} />
+                    <span>{tab.label}</span>
                   </div>
-                  {activeTab === tab.id && <ChevronRight className="w-4 h-4 opacity-40" />}
+                  <ChevronRight className={cn(
+                    "w-5 h-5 transition-all duration-500 relative z-10", 
+                    activeTab === tab.id ? "opacity-100 rotate-90" : "opacity-0 -translate-x-2"
+                  )} />
                 </button>
              ))}
-          </nav>
+          </motion.nav>
 
           {/* Panel Principal */}
-          <div className="flex-1 w-full animate-in fade-in slide-in-from-right-4 duration-700">
-             <div className="bg-white rounded-[48px] border border-[#847365]/5 p-8 lg:p-12 shadow-sm relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-8 opacity-5">
-                   <Settings className="w-32 h-32 rotate-12" />
+          <div className="flex-1 w-full relative">
+             <motion.div 
+               initial={{ opacity: 0, y: 20 }}
+               animate={{ opacity: 1, y: 0 }}
+               transition={{ delay: 0.3 }}
+               className="bg-card/30 backdrop-blur-2xl border border-border/40 rounded-[32px] p-8 lg:p-12 shadow-2xl shadow-black/10 overflow-hidden relative"
+             >
+                {/* Decoración de fondo */}
+                <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none">
+                   <Settings className="w-64 h-64 rotate-12" />
                 </div>
 
                 <AnimatePresence mode="wait">
                   {loading ? (
-                    <motion.div key="loader" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center py-24 space-y-4">
-                      <Loader2 className="w-12 h-12 animate-spin text-[#E67E22]" />
-                      <p className="text-[10px] font-black uppercase tracking-widest text-[#847365]/40">Cargando Preferencias...</p>
+                    <motion.div key="loader" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center py-32 space-y-6">
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse" />
+                        <Loader2 className="w-14 h-14 animate-spin text-primary relative z-10" />
+                      </div>
+                      <p className="text-xs font-bold uppercase tracking-[0.3em] text-muted-foreground animate-pulse">Sincronizando Preferencias...</p>
                     </motion.div>
                   ) : activeTab === 'general' ? (
-                    <motion.div key="general" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-12">
-                       <section className="grid lg:grid-cols-2 gap-12">
-                          <div className="space-y-8">
-                             <div className="flex items-center gap-4 border-b border-[#847365]/5 pb-6">
-                                <div className="w-10 h-10 bg-[#E67E22]/10 rounded-xl flex items-center justify-center text-[#E67E22]"><Building2 className="w-5 h-5" /></div>
-                                <h3 className="text-2xl font-serif font-black text-[#2D241E]">Identidad Visual</h3>
+                    <motion.div 
+                      key="general" 
+                      initial={{ opacity: 0, x: 20 }} 
+                      animate={{ opacity: 1, x: 0 }} 
+                      exit={{ opacity: 0, x: -20 }} 
+                      className="space-y-12 relative z-10"
+                    >
+                       <section className="space-y-8">
+                          <div className="flex items-center gap-4 border-b border-border/40 pb-6">
+                             <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                                <Building2 className="w-6 h-6" />
                              </div>
-
-                             <div className="space-y-6">
-                                <div className="space-y-2">
-                                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[#847365] ml-1">Nombre Oficial</label>
-                                  <input 
-                                    type="text"
-                                    value={formData.academy_name}
-                                    onChange={(e) => setFormData({ ...formData, academy_name: e.target.value })}
-                                    className="w-full bg-[#F5F1EE]/50 border-none rounded-2xl px-6 py-5 focus:ring-4 focus:ring-[#E67E22]/10 font-serif italic text-2xl" 
-                                    placeholder="Nombre de la Institución" 
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[#847365] ml-1">Rubro Académico</label>
-                                  <input 
-                                    type="text" 
-                                    value={formData.category}
-                                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                    className="w-full bg-[#F5F1EE]/50 border-none rounded-2xl px-6 py-4 font-bold tracking-tight" 
-                                    placeholder="Danzas, Arte, Idiomas..." 
-                                  />
-                                </div>
-                             </div>
+                             <h3 className="text-3xl font-serif font-medium italic text-foreground tracking-tight">Identidad Visual</h3>
                           </div>
 
-                          <div className="space-y-8">
-                             <div className="flex items-center gap-4 border-b border-[#847365]/5 pb-6">
-                                <div className="w-10 h-10 bg-[#2D241E]/5 rounded-xl flex items-center justify-center text-[#2D241E]"><Camera className="w-5 h-5" /></div>
-                                <h3 className="text-2xl font-serif font-black text-[#2D241E]">Logo</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                             <div className="space-y-3">
+                                <label className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Nombre de la Institución</label>
+                                <input 
+                                  type="text"
+                                  value={formData.academy_name}
+                                  onChange={(e) => setFormData({ ...formData, academy_name: e.target.value })}
+                                  className="w-full bg-card/40 border border-border/40 rounded-2xl px-6 py-5 focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none font-serif italic text-2xl transition-all" 
+                                  placeholder="Ej: Sahara Academy" 
+                                />
                              </div>
-
-                             <div className="flex flex-col sm:flex-row gap-8 items-center bg-[#F5F1EE]/20 p-8 rounded-[32px] border border-dashed border-[#847365]/10">
-                                <div className="relative group">
-                                  <div className={cn(
-                                    "w-32 h-32 rounded-[32px] bg-white shadow-xl flex items-center justify-center p-4 transition-all duration-500 overflow-hidden",
-                                    !formData.logo_url && "border-2 border-dashed border-[#847365]/20"
-                                  )}>
-                                    {formData.logo_url ? (
-                                      <img src={formData.logo_url} alt="Logo" className="w-full h-full object-contain" />
-                                    ) : (
-                                      <ImageIcon className="w-10 h-10 text-[#847365]/20" />
-                                    )}
-                                  </div>
-                                  <input 
-                                    type="file" 
-                                    accept="image/*"
-                                    className="absolute inset-0 opacity-0 cursor-pointer"
-                                    onChange={async (e) => {
-                                      const file = e.target.files?.[0];
-                                      if (!file) return;
-                                      try {
-                                        setSaving(true);
-                                        const formDataToUpload = new FormData();
-                                        formDataToUpload.append("file", file);
-                                        
-                                        const { uploadLogoAction } = await import('@/app/actions/upload-logo');
-                                        const result = await uploadLogoAction(formDataToUpload);
-                                        
-                                        if (!result.success || !result.url) throw new Error(result.error || "No se obtuvo una URL");
-                                        setFormData({ ...formData, logo_url: result.url });
-                                      } catch (err: any) { 
-                                        console.error(err);
-                                        setMessage({ type: 'error', text: err.message || 'Error al subir el logo' });
-                                      } finally { 
-                                        setSaving(false); 
-                                      }
-                                    }}
-                                  />
-                                  <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-[#E67E22] rounded-full flex items-center justify-center text-white shadow-lg shadow-[#E67E22]/40 opacity-0 group-hover:opacity-100 transition-opacity">
-                                     <Upload className="w-4 h-4" />
-                                  </div>
-                                </div>
-                                <div className="space-y-1 text-center sm:text-left">
-                                   <p className="font-black text-sm tracking-tight">Cambiar Imagen</p>
-                                   <p className="text-[10px] font-bold text-[#847365]/50 leading-relaxed max-w-[180px]">Formatos recomendados: PNG Transparente o SVG para máxima nitidez.</p>
-                                   {formData.logo_url && <button onClick={() => setFormData({...formData, logo_url: ""})} className="text-[10px] font-black uppercase text-red-500 hover:text-red-600 transition-colors mt-2 flex items-center gap-1"><Trash2 className="w-3 h-3" /> Quitar Logo</button>}
-                                </div>
+                             <div className="space-y-3">
+                                <label className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Rubro / Categoría</label>
+                                <input 
+                                  type="text" 
+                                  value={formData.category}
+                                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                  className="w-full bg-card/40 border border-border/40 rounded-2xl px-6 py-5 font-semibold text-lg focus:ring-4 focus:ring-primary/10 outline-none transition-all" 
+                                  placeholder="Danzas, Arte, Idiomas..." 
+                                />
                              </div>
                           </div>
                        </section>
 
-                       <section className="pt-8 border-t border-[#847365]/5 flex items-center justify-between">
-                          <AnimatePresence>
-                             {message && (
-                                <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className={cn("flex items-center gap-2 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest", message.type === 'success' ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600")}>
-                                   <CheckCircle2 className="w-4 h-4" /> {message.text}
-                                </motion.div>
-                             )}
-                          </AnimatePresence>
-                          <Button onClick={handleSave} disabled={saving} className="bg-[#2D241E] hover:bg-[#E67E22] text-white px-12 h-16 rounded-[24px] font-black text-lg shadow-xl shadow-black/5 active:scale-95 transition-all flex border-none focus:outline-none">
-                             {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : <><Save className="w-5 h-5 mr-3" /> Guardar Todo</>}
-                          </Button>
+                       <section className="space-y-8">
+                          <div className="flex items-center gap-4 border-b border-border/40 pb-6">
+                             <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                                <ImageIcon className="w-6 h-6" />
+                             </div>
+                             <h3 className="text-3xl font-serif font-medium italic text-foreground tracking-tight">Emblema Institucional</h3>
+                          </div>
+
+                          <div className="flex flex-col md:flex-row gap-10 items-center bg-card/20 p-10 rounded-[40px] border border-border/40">
+                             <div className="relative group">
+                               <div className="absolute -inset-4 bg-primary/10 rounded-[44px] blur-2xl group-hover:bg-primary/20 transition-all duration-500 opacity-0 group-hover:opacity-100" />
+                               <div className={cn(
+                                 "w-44 h-44 rounded-[40px] bg-background shadow-2xl flex items-center justify-center p-6 border-4 border-card relative z-10 transition-transform duration-500 group-hover:scale-[1.05]",
+                                 !formData.logo_url && "border-dashed border-primary/20"
+                               )}>
+                                 {formData.logo_url ? (
+                                   <img src={formData.logo_url} alt="Logo" className="w-full h-full object-contain" />
+                                 ) : (
+                                   <ImageIcon className="w-16 h-16 text-muted-foreground/20" />
+                                 )}
+                               </div>
+                               <input 
+                                 type="file" 
+                                 accept="image/*"
+                                 className="absolute inset-0 opacity-0 cursor-pointer z-20"
+                                 onChange={async (e) => {
+                                   const file = e.target.files?.[0];
+                                   if (!file) return;
+                                   try {
+                                     setSaving(true);
+                                     const fData = new FormData();
+                                     fData.append("file", file);
+                                     const { uploadLogoAction } = await import('@/app/actions/upload-logo');
+                                     const result = await uploadLogoAction(fData);
+                                     if (!result.success || !result.url) throw new Error(result.error || "Error al subir");
+                                     setFormData({ ...formData, logo_url: result.url });
+                                   } catch (err: any) { 
+                                     setMessage({ type: 'error', text: err.message });
+                                   } finally { setSaving(false); }
+                                 }}
+                               />
+                               <div className="absolute -bottom-3 -right-3 w-12 h-12 bg-primary rounded-full flex items-center justify-center text-primary-foreground shadow-xl shadow-primary/40 z-30 pointer-events-none">
+                                  <Upload className="w-5 h-5" />
+                               </div>
+                             </div>
+                             
+                             <div className="space-y-4 text-center md:text-left">
+                                <h4 className="font-serif text-2xl italic">Subir nuevo logo</h4>
+                                <p className="text-muted-foreground font-light leading-relaxed max-w-[280px]">
+                                   Recomendamos archivos PNG con fondo transparente para unificar con el diseño del sistema.
+                                </p>
+                                {formData.logo_url && (
+                                  <button 
+                                    onClick={() => setFormData({...formData, logo_url: ""})} 
+                                    className="text-xs font-bold uppercase tracking-widest text-red-500 hover:text-red-400 transition-colors flex items-center gap-2 mx-auto md:mx-0"
+                                  >
+                                    <Trash2 className="w-4 h-4" /> Eliminar actual
+                                  </button>
+                                )}
+                             </div>
+                          </div>
                        </section>
                     </motion.div>
                   ) : activeTab === 'billing' ? (
-                    <motion.div key="billing" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-10">
-                       <div className="flex items-center gap-4 border-b border-[#847365]/5 pb-6">
-                          <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600"><Coins className="w-5 h-5" /></div>
-                          <h3 className="text-2xl font-serif font-black text-[#2D241E]">Configuración Financiera</h3>
-                       </div>
-                       
-                       <div className="max-w-md space-y-2">
-                          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[#847365] ml-1">Moneda del Sistema</label>
-                          <select
-                            value={formData.currency}
-                            onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                            className="w-full bg-[#F5F1EE]/50 border-none h-16 rounded-2xl px-6 font-bold text-[#2D241E] appearance-none focus:ring-4 focus:ring-indigo-100"
-                          >
-                            <option value="USD">USD - Dólares</option>
-                            <option value="ARS">ARS - Pesos Argentinos</option>
-                            <option value="EUR">EUR - Euros</option>
-                            <option value="MXN">MXN - Pesos Mexicanos</option>
-                          </select>
-                          <p className="text-[10px] text-[#847365]/60 font-medium p-2">Esto afectará cómo se muestran los precios en todo el sistema.</p>
-                       </div>
+                    <motion.div key="billing" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-12 relative z-10">
+                       <section className="space-y-8">
+                          <div className="flex items-center gap-4 border-b border-border/40 pb-6">
+                             <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                                <Coins className="w-6 h-6" />
+                             </div>
+                             <h3 className="text-3xl font-serif font-medium italic text-foreground tracking-tight">Finanzas y Moneda</h3>
+                          </div>
+                          
+                          <div className="max-w-md space-y-4">
+                             <label className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Divisa Principal</label>
+                             <div className="relative">
+                                <select
+                                  value={formData.currency}
+                                  onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                                  className="w-full bg-card/40 border border-border/40 h-20 rounded-2xl px-8 font-serif italic text-2xl text-foreground appearance-none focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                                >
+                                  <option value="USD">USD - Dólares</option>
+                                  <option value="ARS">ARS - Pesos Argentinos</option>
+                                  <option value="EUR">EUR - Euros</option>
+                                  <option value="MXN">MXN - Pesos Mexicanos</option>
+                                </select>
+                                <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
+                                   <ChevronRight className="w-6 h-6 rotate-90" />
+                                </div>
+                             </div>
+                             <p className="text-sm text-muted-foreground font-light italic px-2">Esta divisa se aplicará automáticamente a todos los nuevos pagos y reportes.</p>
+                          </div>
+                       </section>
 
-                       <div className="p-8 bg-blue-50/30 rounded-[32px] border border-blue-100 flex gap-6 items-start">
-                          <div className="w-12 h-12 bg-blue-500 text-white rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20"><Bell className="w-6 h-6" /></div>
+                       <div className="p-8 bg-primary/5 rounded-[40px] border border-primary/20 flex flex-col sm:flex-row gap-8 items-center text-center sm:text-left">
+                          <div className="w-16 h-16 bg-primary text-primary-foreground rounded-[24px] flex items-center justify-center shrink-0 shadow-2xl shadow-primary/30">
+                             <Bell className="w-8 h-8" />
+                          </div>
                           <div>
-                            <p className="font-black text-sm mb-1 uppercase tracking-tight">Recordatorios Automáticos</p>
-                            <p className="text-xs text-[#847365] leading-relaxed">Próximamente: Envía avisos automáticos por WhatsApp cuando un alumno pase a estado "Pendiente".</p>
+                            <p className="font-serif text-xl italic mb-1">Automatización Próxima</p>
+                            <p className="text-sm text-muted-foreground font-light leading-relaxed">
+                              Estamos integrando notificaciones automáticas por WhatsApp para alumnos con cuotas pendientes.
+                            </p>
                           </div>
                        </div>
                     </motion.div>
                   ) : (
-                    <motion.div key="coming-soon" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-24 text-center">
-                       <div className="w-20 h-20 bg-[#F5F1EE] rounded-[32px] flex items-center justify-center mb-6"><Settings className="w-10 h-10 text-[#847365]/20 animate-pulse" /></div>
-                       <h3 className="text-xl font-serif font-bold opacity-30">Módulo en Desarrollo</h3>
-                       <p className="text-xs text-[#847365]/40 mt-1 uppercase font-black tracking-widest">Sahara OS v1.2</p>
+                    <motion.div key="coming-soon" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-32 text-center">
+                       <div className="w-24 h-24 bg-card/40 rounded-[40px] flex items-center justify-center mb-8 border border-border/40 shadow-inner">
+                          <Settings className="w-12 h-12 text-muted-foreground/20 animate-spin-slow" />
+                       </div>
+                       <h3 className="text-2xl font-serif italic text-muted-foreground/40">Módulo en Desarrollo</h3>
+                       <p className="text-[10px] text-muted-foreground/20 mt-4 uppercase font-black tracking-[0.4em]">Sahara OS v1.2</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
-             </div>
+
+                {/* Footer de Acciones - Flotante o Fijo al panel */}
+                <div className="mt-16 pt-10 border-t border-border/40 flex flex-col md:flex-row items-center justify-between gap-6 relative z-30">
+                   <div className="min-h-[48px]">
+                      <AnimatePresence>
+                         {message && (
+                            <motion.div 
+                               initial={{ opacity: 0, x: -20 }} 
+                               animate={{ opacity: 1, x: 0 }} 
+                               exit={{ opacity: 0, x: 20 }} 
+                               className={cn(
+                                 "flex items-center gap-3 px-8 py-4 rounded-2xl text-sm font-bold tracking-tight shadow-xl", 
+                                 message.type === 'success' ? "bg-green-500/10 text-green-500 border border-green-500/20" : "bg-red-500/10 text-red-500 border border-red-500/20"
+                               )}
+                            >
+                               <CheckCircle2 className="w-5 h-5" /> {message.text}
+                            </motion.div>
+                         )}
+                      </AnimatePresence>
+                   </div>
+                   
+                   <Button 
+                      onClick={handleSave} 
+                      disabled={saving} 
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground px-14 h-20 rounded-[28px] font-bold text-xl shadow-2xl shadow-primary/30 active:scale-[0.97] transition-all flex items-center gap-4 group min-w-[280px]"
+                   >
+                      {saving ? (
+                         <Loader2 className="w-7 h-7 animate-spin" />
+                      ) : (
+                         <>
+                           <Save className="w-6 h-6 group-hover:scale-110 transition-transform" /> 
+                           Guardar Cambios
+                         </>
+                      )}
+                   </Button>
+                </div>
+             </motion.div>
           </div>
         </div>
       </main>
-      <style jsx global>{`
-        .shadow-warm { box-shadow: 0 10px 40px -10px rgba(132, 115, 101, 0.12); }
-      `}</style>
     </div>
   );
 }
