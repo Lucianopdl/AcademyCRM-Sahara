@@ -918,6 +918,67 @@ export default function AlumnosPage() {
           )}
         </AnimatePresence>
 
+        {/* Modal de Cobro (Payment) */}
+        <AnimatePresence>
+          {showPaymentModal && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-background/60 backdrop-blur-md">
+              <motion.div initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} className="bg-card w-full max-w-xl rounded-[40px] shadow-2xl border border-border overflow-hidden">
+                <div className="bg-gradient-to-br from-primary/10 to-transparent p-8 border-b border-border/50">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/20"><Calculator className="w-7 h-7" /></div>
+                    <div>
+                      <h3 className="text-2xl font-serif font-black text-foreground">Cobro de Cuota</h3>
+                      <p className="text-xs text-foreground/40 font-bold uppercase tracking-widest">{selectedStudent?.full_name}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-8 space-y-6">
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black uppercase tracking-widest text-foreground/40 pl-1">Mes a Cobrar</label>
+                       <select value={paymentData.month} onChange={(e) => setPaymentData({...paymentData, month: parseInt(e.target.value)})} className="w-full bg-muted/30 border border-border rounded-2xl px-5 py-4 font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer">
+                         {Array.from({length: 12}, (_, i) => <option key={i+1} value={i+1} className="bg-card text-foreground">{months[i]}</option>)}
+                       </select>
+                    </div>
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black uppercase tracking-widest text-foreground/40 pl-1">Año</label>
+                       <select value={paymentData.year} onChange={(e) => setPaymentData({...paymentData, year: parseInt(e.target.value)})} className="w-full bg-muted/30 border border-border rounded-2xl px-5 py-4 font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer">
+                         <option value={new Date().getFullYear()} className="bg-card text-foreground">{new Date().getFullYear()}</option>
+                         <option value={new Date().getFullYear()+1} className="bg-card text-foreground">{new Date().getFullYear()+1}</option>
+                       </select>
+                    </div>
+                  </div>
+
+                  <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10 flex items-center justify-between">
+                    <div>
+                       <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">Monto a Percibir</p>
+                       <p className="text-3xl font-black text-foreground">${selectedStudent?.category?.price.toLocaleString()}</p>
+                    </div>
+                    <DollarSign className="w-10 h-10 text-primary opacity-20" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-foreground/40 pl-1">Método de Pago</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {['Efectivo', 'Transferencia', 'Tarjeta', 'Otro'].map((m) => (
+                        <button key={m} onClick={() => setPaymentData({...paymentData, method: m})} className={cn("py-4 rounded-2xl font-bold text-sm transition-all border", paymentData.method === m ? "bg-primary text-white border-primary shadow-lg shadow-primary/20 scale-[1.02]" : "bg-muted/20 text-foreground/60 border-border hover:bg-muted/40")}>{m}</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-8 bg-muted/10 flex gap-4">
+                  <button onClick={() => setShowPaymentModal(false)} className="flex-1 py-5 rounded-[24px] font-black text-[10px] uppercase tracking-widest text-foreground/40 hover:bg-muted/50 transition-all border border-border/50">Cancelar</button>
+                  <button onClick={handleRegisterPayment} disabled={saving} className="flex-[2] bg-foreground hover:bg-primary text-background hover:text-white py-5 rounded-[24px] font-black text-[10px] uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2">
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle2 className="w-4 h-4" /> Confirmar Cobro</>}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Search and Filters Bar */}
         <section className="mb-8 flex flex-col lg:flex-row gap-4">
           <div className="relative flex-1 group">
@@ -1235,31 +1296,31 @@ export default function AlumnosPage() {
             <motion.div initial={{ scale: 0.85, y: 40, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.85, y: 40, opacity: 0 }} transition={{ type: 'spring' as const, damping: 25, stiffness: 300 }} className="bg-card w-full max-w-[380px] max-h-[90vh] overflow-y-auto rounded-[28px] shadow-2xl border border-border">
               
               {/* Captura para PDF */}
-              <div ref={receiptRef} className="bg-card">
+              <div ref={receiptRef} className="bg-card text-foreground">
                 {/* Header compacto */}
-                <div className="relative bg-gradient-to-br from-[#1a1410] via-[#2D241E] to-[#3d3229] px-6 pt-6 pb-5 text-center overflow-hidden">
-                  <div className="absolute inset-0">
-                    <div className="absolute -top-8 -left-8 w-28 h-28 bg-[#E67E22]/10 rounded-full blur-3xl" />
-                    <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-[#E67E22]/5 rounded-full blur-3xl" />
+                <div className="relative bg-foreground px-6 pt-6 pb-5 text-center overflow-hidden">
+                  <div className="absolute inset-0 opacity-10">
+                    <div className="absolute -top-8 -left-8 w-28 h-28 bg-primary rounded-full blur-3xl" />
+                    <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-primary rounded-full blur-3xl" />
                   </div>
                   <div className="relative z-10">
-                    <div className="w-14 h-14 bg-gradient-to-br from-[#E67E22] to-[#D35400] rounded-[16px] mx-auto mb-3 flex items-center justify-center shadow-lg shadow-[#E67E22]/25 ring-2 ring-white/10">
+                    <div className="w-14 h-14 bg-primary rounded-[16px] mx-auto mb-3 flex items-center justify-center shadow-lg shadow-primary/25">
                       <Receipt className="w-7 h-7 text-white" />
                     </div>
-                    <h3 className="text-white text-xl font-black tracking-tight" style={{ fontFamily: 'Georgia, serif' }}>Comprobante de Pago</h3>
-                    <p className="text-white/40 text-[8px] font-black uppercase tracking-[0.3em] mt-1">Sahara · Gestión Académica</p>
+                    <h3 className="text-background text-xl font-serif font-black tracking-tight">Comprobante de Pago</h3>
+                    <p className="text-background/40 text-[8px] font-black uppercase tracking-[0.3em] mt-1">Sahara · Gestión Académica</p>
                   </div>
                 </div>
 
                 {/* N° Recibo y Fecha */}
-                <div className="flex justify-between items-center px-6 py-3 bg-muted/30 border-b border-border">
+                <div className="flex justify-between items-center px-6 py-3 bg-muted/20 border-b border-border">
                   <div>
-                    <p className="text-[7px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">N° Recibo</p>
+                    <p className="text-[7px] font-black uppercase tracking-[0.2em] text-foreground/40">N° Recibo</p>
                     <p className="font-mono font-extrabold text-foreground text-xs tracking-wider">{invoiceData.receiptNumber}</p>
                   </div>
                   <div className="w-px h-6 bg-border" />
                   <div className="text-right">
-                    <p className="text-[7px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">Fecha</p>
+                    <p className="text-[7px] font-black uppercase tracking-[0.2em] text-foreground/40">Fecha</p>
                     <p className="font-extrabold text-foreground text-xs">{invoiceData.date}</p>
                   </div>
                 </div>
@@ -1268,58 +1329,58 @@ export default function AlumnosPage() {
                 <div className="px-6 py-5 space-y-4">
                   {/* Info alumno */}
                   <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-xl border border-primary/20">
-                    <div className="w-11 h-11 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-sm shrink-0">
-                      <span className="text-primary-foreground text-base font-black">{invoiceData.studentName.charAt(0)}</span>
+                    <div className="w-11 h-11 bg-primary rounded-xl flex items-center justify-center shadow-sm shrink-0">
+                      <span className="text-white text-base font-black">{invoiceData.studentName.charAt(0)}</span>
                     </div>
                     <div className="min-w-0">
                       <p className="font-black text-foreground text-sm leading-tight truncate">{invoiceData.studentName}</p>
-                      <p className="text-muted-foreground text-[10px] font-bold">DNI: {invoiceData.studentDni} · {invoiceData.categoryName}</p>
+                      <p className="text-foreground/60 text-[10px] font-bold">DNI: {invoiceData.studentDni} · {invoiceData.categoryName}</p>
                     </div>
                   </div>
 
                   {/* Detalles */}
-                  <div className="bg-muted/20 rounded-xl border border-border overflow-hidden text-[12px]">
+                  <div className="bg-muted/10 rounded-xl border border-border overflow-hidden text-[12px]">
                     <div className="flex justify-between items-center px-4 py-2.5">
-                      <span className="text-[8px] font-black uppercase tracking-[0.15em] text-muted-foreground/60">Concepto</span>
+                      <span className="text-[8px] font-black uppercase tracking-[0.15em] text-foreground/40">Concepto</span>
                       <span className="font-extrabold text-foreground">Cuota {months[invoiceData.month - 1]} {invoiceData.year}</span>
                     </div>
                     <div className="h-px bg-border" />
                     <div className="flex justify-between items-center px-4 py-2.5">
-                      <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/60">Método</span>
+                      <span className="text-[8px] font-black uppercase tracking-widest text-foreground/40">Método</span>
                       <span className="font-extrabold text-foreground">{invoiceData.method}</span>
                     </div>
                     {invoiceData.notes && (
                       <>
                         <div className="h-px bg-border" />
                         <div className="flex justify-between items-center px-4 py-2.5">
-                          <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/60">Notas</span>
-                          <span className="font-bold text-muted-foreground text-[11px] max-w-[160px] text-right">{invoiceData.notes}</span>
+                          <span className="text-[8px] font-black uppercase tracking-widest text-foreground/40">Notas</span>
+                          <span className="font-bold text-foreground/60 text-[11px] max-w-[160px] text-right">{invoiceData.notes}</span>
                         </div>
                       </>
                     )}
                     <div className="h-px bg-border" />
                     <div className="flex justify-between items-center px-4 py-2.5">
-                      <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/60">Estado</span>
-                      <span className="inline-flex items-center gap-1 bg-green-500/10 text-green-500 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border border-green-500/20">
+                      <span className="text-[8px] font-black uppercase tracking-widest text-foreground/40">Estado</span>
+                      <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-600 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border border-emerald-500/20">
                         <CheckCircle2 className="w-2.5 h-2.5" /> Pagado
                       </span>
                     </div>
                   </div>
 
                   {/* Total */}
-                  <div className="p-4 bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-xl flex justify-between items-center shadow-md shadow-primary/15 relative overflow-hidden">
+                  <div className="p-4 bg-primary rounded-xl flex justify-between items-center shadow-md shadow-primary/15 relative overflow-hidden">
                     <div className="absolute -right-3 -top-3 w-16 h-16 bg-white/5 rounded-full" />
                     <div className="relative z-10">
                       <span className="text-white/60 text-[7px] font-black uppercase tracking-[0.25em] block mb-0.5">Total Abonado</span>
                       <div className="flex items-baseline gap-0.5">
                         <span className="text-white/70 text-sm font-bold">$</span>
-                        <span className="text-white text-2xl font-black leading-none" style={{ fontFamily: 'Georgia, serif' }}>{invoiceData.amount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+                        <span className="text-white text-2xl font-black leading-none">{invoiceData.amount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
                       </div>
                     </div>
-                    <DollarSign className="w-8 h-8 text-white/15 relative z-10" />
+                    <DollarSign className="w-8 h-8 text-white/10 relative z-10" />
                   </div>
 
-                  <p className="text-center text-[8px] text-muted-foreground/60 font-bold tracking-wide">Este comprobante es válido como constancia de pago.</p>
+                  <p className="text-center text-[8px] text-foreground/40 font-bold tracking-wide">Este comprobante es válido como constancia de pago.</p>
                 </div>
               </div>
 

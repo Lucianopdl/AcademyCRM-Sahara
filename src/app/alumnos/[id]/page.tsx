@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef, use } from "react";
-import { Sidebar } from "@/components/sidebar";
+import { DashboardShell } from "@/components/dashboard-shell";
 import { motion, AnimatePresence } from "framer-motion";
 import html2canvas from "html2canvas-pro";
 import { jsPDF } from "jspdf";
@@ -386,62 +386,95 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
   };
 
   if (loading) return (
-    <div className="flex h-screen items-center justify-center bg-[#FDFCFB]">
-      <Loader2 className="w-10 h-10 animate-spin text-[#E67E22] opacity-40" />
+    <div className="flex h-screen items-center justify-center bg-background">
+      <Loader2 className="w-10 h-10 animate-spin text-primary opacity-40" />
     </div>
   );
 
   if (!student) return <div className="p-20 text-center">Alumno no encontrado.</div>;
 
   return (
-    <div className="flex bg-[#FDFCFB] min-h-screen text-[#2D241E] font-sans">
-      <Sidebar />
-      <main className="flex-1 p-6 lg:p-10 overflow-y-auto">
+    <DashboardShell>
+      <div className="p-4 lg:p-8 space-y-8 max-w-7xl mx-auto">
         {/* Header con navegación de vuelta */}
-        <header className="mb-8">
-          <Link href="/alumnos" className="inline-flex items-center gap-2 text-[#847365] hover:text-[#E67E22] transition-colors mb-6 font-medium group">
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Volver al listado
+        <header className="relative space-y-6">
+          <Link 
+            href="/alumnos" 
+            className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors font-medium group text-sm"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> 
+            Volver al listado
           </Link>
           
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="flex items-center gap-6">
-              <div className="w-24 h-24 rounded-[32px] bg-[#E67E22] text-white flex items-center justify-center font-serif font-bold text-4xl shadow-xl">
-                {student.full_name.charAt(0)}
+              <div className="relative group">
+                <div className="absolute inset-0 bg-primary/20 rounded-[32px] blur-xl group-hover:bg-primary/30 transition-all"></div>
+                <div className="relative w-24 h-24 rounded-[32px] bg-gradient-to-br from-primary to-primary/80 text-primary-foreground flex items-center justify-center font-serif font-bold text-4xl shadow-2xl ring-4 ring-background">
+                  {student.full_name.charAt(0)}
+                </div>
               </div>
-              <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-4xl font-serif font-bold tracking-tight">{student.full_name}</h1>
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="text-3xl md:text-5xl font-serif font-bold tracking-tight italic">
+                    {student.full_name}
+                  </h1>
                   <span className={cn(
-                    "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border",
-                    student.status === 'active' ? "bg-green-50 text-green-600 border-green-100" : "bg-red-50 text-red-600 border-red-100"
+                    "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border backdrop-blur-md",
+                    student.status === 'active' 
+                      ? "bg-green-500/10 text-green-500 border-green-500/20" 
+                      : "bg-red-500/10 text-red-500 border-red-500/20"
                   )}>
                     {student.status === 'active' ? 'Activo' : 'Inactivo'}
                   </span>
                 </div>
-                <p className="text-[#847365] font-medium opacity-80 mt-1 flex items-center gap-2">
-                  <Calendar className="w-4 h-4" /> Ingresó el {format(new Date(student.enrollment_date), "PP", { locale: es })}
+                <p className="text-muted-foreground font-medium flex items-center gap-2 text-sm">
+                  <Calendar className="w-4 h-4 text-primary/60" /> 
+                  Ingresó el <span className="text-foreground">{format(new Date(student.enrollment_date), "PP", { locale: es })}</span>
                 </p>
               </div>
             </div>
             
             <div className="flex gap-3">
-               <Button onClick={() => window.open(getWhatsAppLink(student.phone || "", "Hola!"), "_blank")} className="bg-[#2D241E] text-white hover:bg-[#128C7E] h-12 px-6 rounded-2xl gap-2 shadow-lg transition-all active:scale-95">
-                 <MessageSquare className="w-4 h-4" /> WhatsApp
+               <Button 
+                onClick={() => window.open(getWhatsAppLink(student.phone || "", "Hola!"), "_blank")} 
+                className="bg-[#2D241E] dark:bg-primary text-white hover:opacity-90 h-12 px-6 rounded-2xl gap-2 shadow-xl shadow-primary/10 transition-all active:scale-95 font-bold"
+               >
+                 <MessageSquare className="w-4 h-4" /> 
+                 WhatsApp
                </Button>
             </div>
           </div>
         </header>
 
         {/* Tabs de Navegación Interna */}
-        <nav className="flex border-b border-[#847365]/10 mb-10 gap-8">
-           <button onClick={() => setActiveTab('financial')} className={cn("pb-4 text-xs font-black uppercase tracking-[0.2em] transition-all relative", activeTab === 'financial' ? "text-[#E67E22]" : "text-[#847365]/40")}>
-             Económico {activeTab === 'financial' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-1 bg-[#E67E22] rounded-full" />}
+        <nav className="flex items-center gap-2 p-1.5 bg-card/30 backdrop-blur-xl border border-border/40 rounded-3xl w-fit">
+           <button 
+            onClick={() => setActiveTab('financial')} 
+            className={cn(
+              "px-6 py-3 text-[10px] font-black uppercase tracking-widest transition-all rounded-2xl relative", 
+              activeTab === 'financial' ? "bg-background text-primary shadow-sm" : "text-muted-foreground/60 hover:text-foreground"
+            )}
+           >
+             Económico
            </button>
-           <button onClick={() => setActiveTab('info')} className={cn("pb-4 text-xs font-black uppercase tracking-[0.2em] transition-all relative", activeTab === 'info' ? "text-[#E67E22]" : "text-[#847365]/40")}>
-             Datos Personales {activeTab === 'info' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-1 bg-[#E67E22] rounded-full" />}
+           <button 
+            onClick={() => setActiveTab('info')} 
+            className={cn(
+              "px-6 py-3 text-[10px] font-black uppercase tracking-widest transition-all rounded-2xl relative", 
+              activeTab === 'info' ? "bg-background text-primary shadow-sm" : "text-muted-foreground/60 hover:text-foreground"
+            )}
+           >
+             Datos Personales
            </button>
-           <button onClick={() => setActiveTab('attendance')} className={cn("pb-4 text-xs font-black uppercase tracking-[0.2em] transition-all relative", activeTab === 'attendance' ? "text-[#E67E22]" : "text-[#847365]/40")}>
-             Asistencia {activeTab === 'attendance' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-1 bg-[#E67E22] rounded-full" />}
+           <button 
+            onClick={() => setActiveTab('attendance')} 
+            className={cn(
+              "px-6 py-3 text-[10px] font-black uppercase tracking-widest transition-all rounded-2xl relative", 
+              activeTab === 'attendance' ? "bg-background text-primary shadow-sm" : "text-muted-foreground/60 hover:text-foreground"
+            )}
+           >
+             Asistencia
            </button>
         </nav>
 
@@ -451,29 +484,43 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
           <div className="lg:col-span-2 space-y-10">
             {activeTab === 'financial' && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                 <section className="bg-white rounded-[40px] border border-[#847365]/5 shadow-sm p-8 mb-10">
+                 <section className="bg-card/30 backdrop-blur-xl rounded-[40px] border border-border/40 shadow-2xl p-8 mb-8">
                     <div className="flex items-center justify-between mb-8">
-                      <h3 className="text-xl font-serif font-bold flex items-center gap-3"><CreditCard className="w-5 h-5 text-[#E67E22]" /> Estado de Cuotas</h3>
+                      <h3 className="text-xl font-serif font-bold flex items-center gap-3">
+                        <CreditCard className="w-5 h-5 text-primary" /> 
+                        Estado de Cuotas
+                      </h3>
                     </div>
                     
                     <div className="space-y-4">
                       {fees.length === 0 ? (
-                        <div className="text-center py-10 text-[#847365]/60 bg-[#F5F1EE]/30 rounded-3xl">No hay cuotas generadas para este alumno.</div>
+                        <div className="text-center py-12 text-muted-foreground/60 bg-muted/10 rounded-3xl border border-dashed border-border/40 font-medium">
+                          No hay cuotas generadas para este alumno.
+                        </div>
                       ) : fees.map(fee => (
-                          <div key={fee.id} className="flex items-center justify-between p-6 bg-[#F5F1EE]/20 rounded-3xl border border-transparent hover:border-[#E67E22]/10 transition-all">
+                          <div key={fee.id} className="flex items-center justify-between p-6 bg-background/40 rounded-3xl border border-border/10 hover:border-primary/20 hover:shadow-lg transition-all group">
                              <div className="flex items-center gap-5">
-                                <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center", 
-                                  fee.status === 'paid' ? "bg-green-100 text-green-600" : "bg-orange-100 text-orange-600")}>
+                                <div className={cn(
+                                  "w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110", 
+                                  fee.status === 'paid' ? "bg-green-500/10 text-green-500" : "bg-primary/10 text-primary"
+                                )}>
                                   {fee.status === 'paid' ? <CheckCircle2 className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
                                 </div>
                                 <div>
                                    <p className="font-bold text-lg">{months[fee.month - 1]} {fee.year}</p>
-                                   <p className="text-xs text-[#847365] font-medium">Pagado: ${fee.paid_amount.toLocaleString()} / ${fee.total_amount.toLocaleString()}</p>
+                                   <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">
+                                     Pagado: <span className="text-foreground">${fee.paid_amount.toLocaleString()}</span> / <span className="text-foreground">${fee.total_amount.toLocaleString()}</span>
+                                   </p>
                                 </div>
                              </div>
                              <div className="flex items-center gap-4">
                                 {fee.status !== 'paid' && (
-                                   <Button onClick={() => { setSelectedFee(fee); setPaymentForm({...paymentForm, amount: (fee.total_amount - fee.paid_amount).toString()}); setShowPaymentModal(true); }} className="bg-[#2D241E] text-white hover:bg-[#E67E22] px-6 h-10 rounded-xl font-bold text-xs uppercase">Cobrar</Button>
+                                   <Button 
+                                    onClick={() => { setSelectedFee(fee); setPaymentForm({...paymentForm, amount: (fee.total_amount - fee.paid_amount).toString()}); setShowPaymentModal(true); }} 
+                                    className="bg-primary text-primary-foreground hover:opacity-90 px-6 h-10 rounded-xl font-black text-[10px] uppercase tracking-widest"
+                                   >
+                                     Cobrar
+                                   </Button>
                                 )}
                              </div>
                           </div>
@@ -481,111 +528,123 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
                     </div>
                  </section>
 
-                 <section className="bg-white rounded-[40px] border border-[#847365]/5 shadow-sm p-8">
-                    <h3 className="text-xl font-serif font-bold flex items-center gap-3 mb-8 text-[#847365]/60"><History className="w-5 h-5" /> Historial de Comprobantes</h3>
-                    <div className="overflow-hidden">
+                 <section className="bg-card/30 backdrop-blur-xl rounded-[40px] border border-border/40 shadow-2xl p-8">
+                    <h3 className="text-xl font-serif font-bold flex items-center gap-3 mb-8 text-muted-foreground">
+                      <History className="w-5 h-5 text-primary" /> 
+                      Historial de Comprobantes
+                    </h3>
+                    <div className="overflow-x-auto">
                        {payments.length === 0 ? (
-                         <div className="text-center py-10 text-[#847365]/60 bg-[#F5F1EE]/30 rounded-3xl">No hay pagos registrados aún.</div>
+                         <div className="text-center py-12 text-muted-foreground/60 bg-muted/10 rounded-3xl border border-dashed border-border/40">
+                           No hay pagos registrados aún.
+                         </div>
                        ) : (
-                       <table className="w-full text-left">
-                          <thead>
-                             <tr className="border-b border-[#847365]/5">
-                               <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-[#847365]/40">N° Recibo</th>
-                               <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-[#847365]/40">Monto</th>
-                               <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-[#847365]/40">Fecha</th>
-                               <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-[#847365]/40">Método</th>
-                               <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-[#847365]/40 text-right">Acción</th>
-                             </tr>
-                          </thead>
-                          <tbody>
-                             {payments.map(p => (
-                                <tr key={p.id} className="border-b border-[#847365]/5 last:border-0 group hover:bg-[#F5F1EE]/30 transition-colors">
-                                   <td className="py-4">
-                                     {p.receipt_number ? (
-                                       <span className="inline-flex items-center gap-1.5 bg-[#2D241E] text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
-                                         <Receipt className="w-3 h-3" />
-                                         {p.receipt_number}
+                        <table className="w-full text-left">
+                           <thead>
+                              <tr className="border-b border-border/10">
+                                <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">N° Recibo</th>
+                                <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Monto</th>
+                                <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Fecha</th>
+                                <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Método</th>
+                                <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 text-right">Acción</th>
+                              </tr>
+                           </thead>
+                           <tbody>
+                              {payments.map(p => (
+                                 <tr key={p.id} className="border-b border-border/5 last:border-0 group hover:bg-muted/30 transition-colors">
+                                    <td className="py-4">
+                                      {p.receipt_number ? (
+                                        <span className="inline-flex items-center gap-1.5 bg-foreground text-background px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                                          <Receipt className="w-3 h-3" />
+                                          {p.receipt_number}
+                                        </span>
+                                      ) : (
+                                        <span className="text-[10px] text-muted-foreground/40 font-mono">#{p.id.split('-')[0].toUpperCase()}</span>
+                                      )}
+                                    </td>
+                                    <td className="py-4 font-black text-primary text-base">${p.amount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+                                    <td className="py-4 text-sm font-medium text-muted-foreground">{format(new Date(p.payment_date), "dd/MM/yy HH:mm")}</td>
+                                    <td className="py-4">
+                                       <span className={cn(
+                                         "text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg border backdrop-blur-md",
+                                         p.payment_method === 'cash' 
+                                           ? 'bg-green-500/10 text-green-500 border-green-500/20' 
+                                           : 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                                       )}>
+                                         {p.payment_method === 'cash' ? 'Efectivo' : p.payment_method === 'transfer' ? 'Transferencia' : p.payment_method}
                                        </span>
-                                     ) : (
-                                       <span className="text-[10px] text-[#847365]/40 font-mono">#{p.id.split('-')[0].toUpperCase()}</span>
-                                     )}
-                                   </td>
-                                   <td className="py-4 font-black text-[#E67E22] text-base">${p.amount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
-                                   <td className="py-4 text-sm font-medium text-[#847365]">{format(new Date(p.payment_date), "dd/MM/yy HH:mm")}</td>
-                                   <td className="py-4">
-                                      <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg ${
-                                        p.payment_method === 'cash' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-blue-50 text-blue-700 border border-blue-100'
-                                      }`}>{p.payment_method === 'cash' ? 'Efectivo' : p.payment_method === 'transfer' ? 'Transferencia' : p.payment_method}</span>
-                                   </td>
-                                   <td className="py-4 text-right">
-                                     <button
-                                       onClick={() => openReceipt(p)}
-                                       className="inline-flex items-center gap-1.5 bg-[#E67E22]/10 hover:bg-[#E67E22] text-[#E67E22] hover:text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95"
-                                     >
-                                       <Eye className="w-3.5 h-3.5" />
-                                       Ver Recibo
-                                     </button>
-                                   </td>
-                                </tr>
-                             ))}
-                          </tbody>
-                       </table>
+                                    </td>
+                                    <td className="py-4 text-right">
+                                      <button
+                                        onClick={() => openReceipt(p)}
+                                        className="inline-flex items-center gap-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95"
+                                      >
+                                        <Eye className="w-3.5 h-3.5" />
+                                        Ver Recibo
+                                      </button>
+                                    </td>
+                                 </tr>
+                              ))}
+                           </tbody>
+                        </table>
                        )}
                     </div>
                  </section>
               </motion.div>
             )}
 
-            {activeTab === 'info' && (
-               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-[40px] border border-[#847365]/5 shadow-sm p-10 grid grid-cols-1 md:grid-cols-2 gap-12">
-                  <div className="space-y-8">
-                     <div><label className="text-[10px] font-black uppercase tracking-widest text-[#847365]/40 mb-2 block">DNI / Documento</label><p className="text-xl font-serif font-bold">{student.dni || '-'}</p></div>
-                     <div><label className="text-[10px] font-black uppercase tracking-widest text-[#847365]/40 mb-2 block">Fecha de Nacimiento</label><p className="text-xl font-serif font-bold">{student.birthdate ? format(new Date(student.birthdate), "dd/MM/yyyy") : '-'}</p></div>
-                     <div><label className="text-[10px] font-black uppercase tracking-widest text-[#847365]/40 mb-2 block">Dirección</label><p className="text-lg font-medium text-[#847365] flex items-center gap-2"><MapPin className="w-4 h-4" /> {student.address || '-'}</p></div>
-                  </div>
-                  <div className="space-y-8">
-                     <div><label className="text-[10px] font-black uppercase tracking-widest text-[#847365]/40 mb-2 block">Teléfono de Contacto</label><p className="text-xl font-serif font-bold flex items-center gap-2"><Phone className="w-5 h-5 text-[#E67E22]" /> {student.phone || '-'}</p></div>
-                     <div><label className="text-[10px] font-black uppercase tracking-widest text-[#847365]/40 mb-2 block">Correo Electrónico</label><p className="text-lg font-medium text-[#847365] flex items-center gap-2"><Mail className="w-5 h-5" /> {student.email || '-'}</p></div>
-                  </div>
-               </motion.div>
-            )}
+             {activeTab === 'info' && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.98 }} 
+                  animate={{ opacity: 1, scale: 1 }} 
+                  className="bg-card/30 backdrop-blur-xl rounded-[40px] border border-border/40 shadow-2xl p-10 grid grid-cols-1 md:grid-cols-2 gap-12"
+                >
+                   <div className="space-y-8">
+                      <div><label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2 block">DNI / Documento</label><p className="text-xl font-serif font-bold italic">{student.dni || '-'}</p></div>
+                      <div><label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2 block">Fecha de Nacimiento</label><p className="text-xl font-serif font-bold italic">{student.birthdate ? format(new Date(student.birthdate), "dd/MM/yyyy") : '-'}</p></div>
+                      <div><label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2 block">Dirección</label><p className="text-lg font-medium text-muted-foreground flex items-center gap-2"><MapPin className="w-4 h-4 text-primary" /> {student.address || '-'}</p></div>
+                   </div>
+                   <div className="space-y-8">
+                      <div><label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2 block">Teléfono de Contacto</label><p className="text-xl font-serif font-bold italic flex items-center gap-2"><Phone className="w-5 h-5 text-primary" /> {student.phone || '-'}</p></div>
+                      <div><label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-2 block">Correo Electrónico</label><p className="text-lg font-medium text-muted-foreground flex items-center gap-2"><Mail className="w-5 h-5 text-primary" /> {student.email || '-'}</p></div>
+                   </div>
+                </motion.div>
+             )}
 
             {activeTab === 'attendance' && (
                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-10">
-                  <section className="bg-white rounded-[40px] border border-[#847365]/5 shadow-sm p-10">
+                   <section className="bg-card/30 backdrop-blur-xl rounded-[40px] border border-border/40 shadow-2xl p-10">
                     <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
                       <div>
-                        <h3 className="text-2xl font-serif font-bold text-[#2D241E] flex items-center gap-3">
-                          <ClipboardCheck className="w-6 h-6 text-[#E67E22]" /> Inscripción Académica
+                        <h3 className="text-2xl font-serif font-bold flex items-center gap-3">
+                          <ClipboardCheck className="w-6 h-6 text-primary" /> 
+                          Inscripción Académica
                         </h3>
-                        <p className="text-sm text-[#847365] font-medium opacity-60">Gestiona las clases específicas de este alumno.</p>
+                        <p className="text-sm text-muted-foreground font-medium opacity-60">Gestiona las clases específicas de este alumno.</p>
                       </div>
                       
-                      <div className="relative group">
-                         <Plus className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#847365]/40 group-hover:text-[#E67E22] transition-colors" />
+                      <div className="relative">
+                         <Plus className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40" />
                          <select 
-                           className="w-full md:w-64 bg-[#F5F1EE]/50 border-2 border-transparent focus:border-[#E67E22]/20 rounded-2xl pl-10 pr-4 py-3.5 text-xs font-black text-[#847365] uppercase tracking-widest outline-none cursor-pointer hover:bg-[#F5F1EE] transition-all appearance-none"
+                           className="w-full md:w-64 bg-background/50 border border-border/40 focus:border-primary/20 rounded-2xl pl-10 pr-4 py-3.5 text-[10px] font-black text-muted-foreground uppercase tracking-widest outline-none cursor-pointer hover:bg-background transition-all appearance-none"
                            onChange={(e) => { if(e.target.value) handleEnroll(e.target.value); e.target.value = ""; }}
                          >
-                           <option value="" className="text-[#847365]/40">Inscribir en...</option>
+                           <option value="">Inscribir en...</option>
                            {availableClasses.filter(c => !enrollments.some(e => e.class_id === c.id)).map(c => (
-                             <option key={c.id} value={c.id} className="text-[#2D241E] font-medium py-4">{c.name}</option>
+                             <option key={c.id} value={c.id} className="text-foreground font-medium py-4">{c.name}</option>
                            ))}
                          </select>
-                         <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#847365]/40">
-                            <ArrowLeft className="w-3 h-3 rotate-[-90deg]" />
-                         </div>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4">
                       {enrollments.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 px-6 text-center bg-[#F5F1EE]/10 rounded-[32px] border-2 border-dashed border-[#847365]/5">
-                           <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-sm mb-4">
-                              <User className="w-8 h-8 text-[#847365]/20" />
+                        <div className="flex flex-col items-center justify-center py-20 px-6 text-center bg-muted/10 rounded-[32px] border-2 border-dashed border-border/40">
+                           <div className="w-16 h-16 rounded-full bg-background flex items-center justify-center shadow-lg mb-4">
+                              <User className="w-8 h-8 text-muted-foreground/20" />
                            </div>
-                           <p className="text-[#847365] font-serif font-bold text-lg">Sin clases asignadas</p>
-                           <p className="text-xs text-[#847365]/40 max-w-[240px] mt-2 font-medium">El alumno aún no tiene materias o talleres específicos registrados.</p>
+                           <p className="text-foreground font-serif font-bold text-lg italic">Sin clases asignadas</p>
+                           <p className="text-xs text-muted-foreground/40 max-w-[240px] mt-2 font-medium">El alumno aún no tiene materias o talleres específicos registrados.</p>
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -593,19 +652,19 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
                             <motion.div 
                               layout
                               key={en.id} 
-                              className="group relative flex items-center justify-between p-6 bg-white rounded-3xl border border-[#847365]/5 hover:border-[#E67E22]/20 hover:shadow-xl hover:shadow-[#E67E22]/5 transition-all"
+                              className="group relative flex items-center justify-between p-6 bg-background/40 backdrop-blur-md rounded-3xl border border-border/10 hover:border-primary/20 hover:shadow-2xl hover:shadow-primary/5 transition-all"
                             >
                                <div className="flex items-center gap-5">
-                                  <div className="w-12 h-12 rounded-2xl bg-[#F5F1EE] flex items-center justify-center text-[#E67E22] group-hover:bg-[#E67E22] group-hover:text-white transition-colors duration-500">
+                                  <div className="w-12 h-12 rounded-2xl bg-muted/30 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-500">
                                      <ClipboardCheck className="w-6 h-6" />
                                   </div>
                                   <div>
-                                     <p className="font-bold text-[#2D241E] text-lg leading-tight">{en.classes.name}</p>
+                                     <p className="font-bold text-foreground text-lg leading-tight italic">{en.classes.name}</p>
                                      <div className="flex flex-col gap-1 mt-1">
-                                       <p className="text-[10px] text-[#847365]/60 uppercase font-black tracking-widest flex items-center gap-1.5">
-                                         <User className="w-3 h-3" /> {en.classes.teacher_name}
+                                       <p className="text-[10px] text-muted-foreground/60 uppercase font-black tracking-widest flex items-center gap-1.5">
+                                         <User className="w-3 h-3 text-primary/60" /> {en.classes.teacher_name}
                                        </p>
-                                       <p className="text-[10px] text-[#E67E22] uppercase font-black tracking-widest flex items-center gap-1.5 bg-[#E67E22]/5 px-2 py-0.5 rounded-lg self-start">
+                                       <p className="text-[10px] text-primary uppercase font-black tracking-widest flex items-center gap-1.5 bg-primary/10 px-2 py-0.5 rounded-lg self-start">
                                          <Calendar className="w-3 h-3" /> {en.classes.schedule || 'Sin horario'}
                                        </p>
                                      </div>
@@ -613,8 +672,7 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
                                </div>
                                <button 
                                  onClick={() => { if(confirm('¿Desinscribir de esta clase?')) handleUnenroll(en.id) }} 
-                                 className="opacity-0 group-hover:opacity-100 p-3 text-[#847365]/40 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all active:scale-90"
-                                 title="Desinscribir"
+                                 className="opacity-0 group-hover:opacity-100 p-3 text-muted-foreground/40 hover:text-red-500 hover:bg-red-500/10 rounded-2xl transition-all active:scale-90"
                                >
                                   <XCircle className="w-5 h-5" />
                                </button>
@@ -623,144 +681,217 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
                         </div>
                       )}
                     </div>
-                  </section>
+                   </section>
 
-                  <section className="bg-white rounded-[40px] border border-[#847365]/5 shadow-sm p-10 relative overflow-hidden group">
-                     <div className="relative z-10">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
-                           <div>
-                              <h3 className="text-2xl font-serif font-bold text-[#2D241E] flex items-center gap-3">
-                                 <Calendar className="w-6 h-6 text-[#E67E22]" /> Registro de Asistencia
-                              </h3>
-                              <p className="text-sm text-[#847365] font-medium opacity-60">Marca el presente de las clases para el día seleccionado.</p>
-                           </div>
-                           
-                            <div className="flex items-center gap-3 bg-[#F5F1EE] p-1.5 rounded-2xl">
-                              <input 
-                                 type="date" 
-                                 value={attendanceDate}
-                                 onChange={(e) => { setAttendanceDate(e.target.value); fetchAttendance(e.target.value); }}
-                                 className="bg-white border-2 border-transparent focus:border-[#E67E22]/20 rounded-xl px-4 py-2 text-xs font-black text-[#847365] uppercase outline-none shadow-sm transition-all"
-                              />
-                           </div>
-                        </div>
+                   <section className="bg-card/30 backdrop-blur-xl rounded-[40px] border border-border/40 shadow-2xl p-10 relative overflow-hidden group">
+                      <div className="relative z-10">
+                         <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
+                            <div>
+                               <h3 className="text-2xl font-serif font-bold flex items-center gap-3 italic">
+                                  <Calendar className="w-6 h-6 text-primary" /> 
+                                  Registro de Asistencia
+                               </h3>
+                               <p className="text-sm text-muted-foreground font-medium opacity-60">Marca el presente de las clases para el día seleccionado.</p>
+                            </div>
+                            
+                             <div className="flex items-center gap-3 bg-muted/30 p-1.5 rounded-2xl border border-border/10 backdrop-blur-md">
+                               <input 
+                                  type="date" 
+                                  value={attendanceDate}
+                                  onChange={(e) => { setAttendanceDate(e.target.value); fetchAttendance(e.target.value); }}
+                                  className="bg-background border-none rounded-xl px-4 py-2 text-[10px] font-black text-foreground uppercase outline-none shadow-sm transition-all focus:ring-2 focus:ring-primary/20"
+                               />
+                            </div>
+                         </div>
 
-                        <div className="space-y-6">
-                           {enrollments.length === 0 ? (
-                              <div className="text-center py-10 text-[#847365]/40 italic font-serif bg-[#F5F1EE]/30 rounded-3xl">Inscribe al alumno en una clase para tomar asistencia.</div>
-                           ) : enrollments.map(en => {
-                              const record = attendance.find(a => a.class_id === en.class_id);
-                              return (
-                                 <div key={en.id} className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-[#F5F1EE]/20 rounded-3xl border border-transparent hover:border-[#847365]/10 transition-all gap-6">
-                                    <div className="flex items-center gap-5">
-                                       <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-[#E67E22]">
-                                          <Users className="w-6 h-6" />
-                                       </div>
-                                       <div>
-                                          <p className="font-bold text-[#2D241E] text-lg leading-tight">{en.classes.name}</p>
-                                          <p className="text-[10px] text-[#847365]/60 uppercase font-black tracking-widest mt-1">{en.classes.teacher_name}</p>
-                                       </div>
-                                    </div>
+                         <div className="space-y-6">
+                            {enrollments.length === 0 ? (
+                               <div className="text-center py-12 text-muted-foreground/40 italic font-serif bg-muted/5 rounded-3xl border border-dashed border-border/20">
+                                 Inscribe al alumno en una clase para tomar asistencia.
+                               </div>
+                            ) : enrollments.map(en => {
+                               const record = attendance.find(a => a.class_id === en.class_id);
+                               return (
+                                  <div key={en.id} className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-background/40 rounded-3xl border border-border/10 hover:border-primary/10 transition-all gap-6 group/item">
+                                     <div className="flex items-center gap-5">
+                                        <div className="w-12 h-12 rounded-2xl bg-muted/30 flex items-center justify-center text-primary group-hover/item:scale-110 transition-transform">
+                                           <Users className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                           <p className="font-bold text-foreground text-lg leading-tight italic">{en.classes.name}</p>
+                                           <p className="text-[10px] text-muted-foreground/60 uppercase font-black tracking-widest mt-1 italic">{en.classes.teacher_name}</p>
+                                        </div>
+                                     </div>
 
-                                    <div className="flex flex-wrap items-center gap-3">
-                                       {[
-                                          { id: 'present', label: 'Presente', color: 'bg-green-500', icon: CheckCircle2 },
-                                          { id: 'absent', label: 'Ausente', color: 'bg-red-500', icon: XCircle },
-                                          { id: 'late', label: 'Tarde', color: 'bg-orange-500', icon: History }
-                                       ].map(status => {
-                                          const isActive = record?.status === status.id;
-                                          return (
-                                             <button
-                                                key={status.id}
-                                                disabled={saving}
-                                                onClick={() => handleMarkAttendance(en.class_id, status.id as any)}
-                                                className={cn(
-                                                   "flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm active:scale-95",
-                                                   isActive 
-                                                      ? `${status.color} text-white` 
-                                                      : "bg-white text-[#847365]/40 hover:bg-[#2D241E] hover:text-white"
-                                                )}
-                                             >
-                                                <status.icon className={cn("w-3.5 h-3.5", isActive ? "text-white" : "text-[#847365]/20")} />
-                                                {status.label}
-                                             </button>
-                                          );
-                                       })}
-                                    </div>
-                                 </div>
-                              );
-                           })}
-                        </div>
-                     </div>
-                  </section>
+                                     <div className="flex flex-wrap items-center gap-2">
+                                        {[
+                                           { id: 'present', label: 'Presente', color: 'bg-green-500', icon: CheckCircle2 },
+                                           { id: 'absent', label: 'Ausente', color: 'bg-red-500', icon: XCircle },
+                                           { id: 'late', label: 'Tarde', color: 'bg-orange-500', icon: History }
+                                        ].map(status => {
+                                           const isActive = record?.status === status.id;
+                                           return (
+                                              <button
+                                                 key={status.id}
+                                                 disabled={saving}
+                                                 onClick={() => handleMarkAttendance(en.class_id, status.id as any)}
+                                                 className={cn(
+                                                    "flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm active:scale-95 border border-transparent",
+                                                    isActive 
+                                                       ? `${status.color} text-white shadow-lg shadow-${status.color.split('-')[1]}-500/20` 
+                                                       : "bg-background/60 text-muted-foreground/40 hover:bg-foreground hover:text-background border-border/10"
+                                                 )}
+                                              >
+                                                 <status.icon className={cn("w-3.5 h-3.5", isActive ? "text-white" : "text-muted-foreground/20")} />
+                                                 {status.label}
+                                              </button>
+                                           );
+                                        })}
+                                     </div>
+                                  </div>
+                               );
+                            })}
+                         </div>
+                      </div>
+                   </section>
                </motion.div>
             )}
           </div>
 
           {/* Sidebar de Resumen Financiero */}
-          <div className="space-y-10">
-             <div className="bg-[#2D241E] text-white rounded-[40px] p-10 shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-8 opacity-10"><DollarSign className="w-24 h-24" /></div>
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-white/50 mb-6">Total Invertido en el Ciclo</h4>
-                <div className="flex flex-col gap-2">
-                   <p className="text-5xl font-serif font-bold">${payments.reduce((acc, p) => acc + p.amount, 0).toLocaleString()}</p>
-                   <p className="text-xs text-white/40 font-medium tracking-wide">Representa el histórico total de este alumno.</p>
-                </div>
-                <div className="mt-10 pt-8 border-t border-white/10 flex items-center justify-between">
-                   <div><p className="text-xs font-bold text-white/60">Pagos</p><p className="text-xl font-serif font-bold">{payments.length}</p></div>
-                   <div><p className="text-xs font-bold text-white/60">Asistencias</p><p className="text-xl font-serif font-bold">85%</p></div>
-                </div>
-             </div>
+           <div className="space-y-8">
+              <div className="bg-foreground text-background dark:bg-card dark:text-foreground dark:border dark:border-border/40 rounded-[40px] p-10 shadow-2xl relative overflow-hidden group">
+                 <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity duration-700">
+                    <DollarSign className="w-32 h-32 rotate-12" />
+                 </div>
+                 <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground mb-6">Total Invertido en el Ciclo</h4>
+                 <div className="flex flex-col gap-2 relative z-10">
+                    <p className="text-6xl font-serif font-bold italic tracking-tighter">
+                      ${payments.reduce((acc, p) => acc + p.amount, 0).toLocaleString()}
+                    </p>
+                    <p className="text-xs text-muted-foreground font-medium tracking-wide">Representa el histórico total de este alumno.</p>
+                 </div>
+                 <div className="mt-12 pt-8 border-t border-border/10 flex items-center justify-between relative z-10">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Pagos</p>
+                      <p className="text-2xl font-serif font-bold italic">{payments.length}</p>
+                    </div>
+                    <div className="space-y-1 text-right">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Asistencias</p>
+                      <p className="text-2xl font-serif font-bold italic">85%</p>
+                    </div>
+                 </div>
+              </div>
 
-             <div className="bg-[#F5F1EE] rounded-[40px] p-8 border border-[#847365]/5">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-[#847365] mb-6">Próximos Pasos</h4>
-                <ul className="space-y-4">
-                   <li className="flex items-center gap-3 text-sm font-bold text-[#847365] hover:text-[#E67E22] cursor-pointer transition-colors"><div className="w-8 h-8 rounded-full bg-white flex items-center justify-center"><Download className="w-4 h-4" /></div> Descargar Plan de Estudios</li>
-                   <li className="flex items-center gap-3 text-sm font-bold text-[#847365] hover:text-[#E67E22] cursor-pointer transition-colors"><div className="w-8 h-8 rounded-full bg-white flex items-center justify-center"><MessageSquare className="w-4 h-4" /></div> WhatsApp al tutor</li>
-                </ul>
-             </div>
-          </div>
-        </div>
-      </main>
+              <div className="bg-card/30 backdrop-blur-xl rounded-[40px] p-8 border border-border/40 shadow-2xl space-y-6">
+                 <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground mb-2">Próximos Pasos</h4>
+                 <ul className="space-y-2">
+                    <li className="flex items-center gap-3 p-3 text-sm font-bold text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-2xl cursor-pointer transition-all group">
+                       <div className="w-10 h-10 rounded-xl bg-background border border-border/40 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                          <Download className="w-4 h-4" />
+                       </div> 
+                       Descargar Plan de Estudios
+                    </li>
+                    <li className="flex items-center gap-3 p-3 text-sm font-bold text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-2xl cursor-pointer transition-all group">
+                       <div className="w-10 h-10 rounded-xl bg-background border border-border/40 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                          <MessageSquare className="w-4 h-4" />
+                       </div> 
+                       WhatsApp al tutor
+                    </li>
+                 </ul>
+              </div>
+           </div>
+         </div>
+       </div>
+    </DashboardShell>
 
       {/* Modal de Cobro de Cuota */}
       <AnimatePresence>
          {showPaymentModal && selectedFee && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2D241E]/40 backdrop-blur-sm">
-               <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-[#F5F1EE] w-full max-w-lg rounded-[40px] shadow-2xl p-10 border border-white/40">
-                  <div className="flex items-center justify-between mb-8">
-                     <div>
-                        <h3 className="text-2xl font-serif font-bold text-[#2D241E]">Registrar Pago</h3>
-                        <p className="text-[#847365] font-medium text-sm opacity-80">Cuota de {months[selectedFee.month - 1]} {selectedFee.year}</p>
-                     </div>
-                     <button onClick={() => setShowPaymentModal(false)}><XCircle className="w-6 h-6 text-[#847365]/40 hover:text-[#E74C3C]" /></button>
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md"
+            >
+               <motion.div 
+                 initial={{ scale: 0.95, y: 20 }} 
+                 animate={{ scale: 1, y: 0 }} 
+                 exit={{ scale: 0.95, y: 20 }} 
+                 className="bg-card w-full max-w-lg rounded-[40px] shadow-2xl p-10 border border-border overflow-hidden relative"
+               >
+                  {/* Decorative background element */}
+                  <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/5 rounded-full blur-3xl transition-colors" />
+                  
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-8">
+                       <div>
+                          <h3 className="text-2xl font-serif font-bold text-foreground italic">Registrar Pago</h3>
+                          <p className="text-muted-foreground font-medium text-sm opacity-80">Cuota de {months[selectedFee.month - 1]} {selectedFee.year}</p>
+                       </div>
+                       <button 
+                        onClick={() => setShowPaymentModal(false)}
+                        className="p-2 hover:bg-muted/50 rounded-full transition-colors"
+                       >
+                         <XCircle className="w-6 h-6 text-muted-foreground/40 hover:text-red-500" />
+                       </button>
+                    </div>
+                    
+                    <form onSubmit={handleRecordPayment} className="space-y-6">
+                       <div className="space-y-3">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 block ml-4">Monto a abonar ($)</label>
+                          <div className="relative group">
+                             <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none">
+                               <DollarSign className="w-6 h-6 text-primary group-focus-within:scale-110 transition-transform" />
+                             </div>
+                             <input 
+                               type="number" 
+                               required 
+                               value={paymentForm.amount} 
+                               onChange={(e) => setPaymentForm({...paymentForm, amount: e.target.value})} 
+                               className="w-full h-20 bg-background/50 border border-border focus:border-primary/40 rounded-3xl pl-16 pr-8 text-3xl font-black text-foreground focus:ring-4 focus:ring-primary/5 shadow-inner transition-all outline-none" 
+                             />
+                          </div>
+                       </div>
+                       
+                       <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-3">
+                             <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 block ml-4">Método</label>
+                             <select 
+                               value={paymentForm.method} 
+                               onChange={(e) => setPaymentForm({...paymentForm, method: e.target.value})} 
+                               className="w-full h-14 bg-background/50 border border-border focus:border-primary/40 rounded-2xl px-5 font-bold shadow-sm outline-none cursor-pointer hover:bg-background transition-colors"
+                             >
+                                <option value="cash">Efectivo</option>
+                                <option value="transfer">Transferencia</option>
+                                <option value="card">Tarjeta</option>
+                             </select>
+                          </div>
+                          <div className="space-y-3">
+                             <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 block ml-4">Notas</label>
+                             <input 
+                               value={paymentForm.notes} 
+                               onChange={(e) => setPaymentForm({...paymentForm, notes: e.target.value})} 
+                               className="w-full h-14 bg-background/50 border border-border focus:border-primary/40 rounded-2xl px-5 font-bold shadow-sm outline-none transition-colors" 
+                               placeholder="..." 
+                             />
+                          </div>
+                       </div>
+                       
+                       <Button 
+                        disabled={saving} 
+                        type="submit" 
+                        className="w-full bg-primary text-on-primary h-18 rounded-[32px] font-black text-xl shadow-xl shadow-primary/20 active:scale-95 transition-all py-6 mt-4 group overflow-hidden relative"
+                       >
+                          {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : (
+                            <span className="flex items-center gap-2">
+                              Confirmar y Generar Recibo
+                              <Receipt className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                            </span>
+                          )}
+                       </Button>
+                    </form>
                   </div>
-                  <form onSubmit={handleRecordPayment} className="space-y-6">
-                     <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-[#847365]/60 block ml-4">Monto a abonar ($)</label>
-                        <div className="relative">
-                           <DollarSign className="absolute left-6 top-6 w-6 h-6 text-[#E67E22]" />
-                           <input type="number" required value={paymentForm.amount} onChange={(e) => setPaymentForm({...paymentForm, amount: e.target.value})} className="w-full h-20 bg-white border-none rounded-3xl pl-16 pr-8 text-3xl font-black text-[#2D241E] focus:ring-4 focus:ring-[#E67E22]/10 shadow-inner" />
-                        </div>
-                     </div>
-                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                           <label className="text-[10px] font-black uppercase tracking-widest text-[#847365]/60 block ml-4">Método</label>
-                           <select value={paymentForm.method} onChange={(e) => setPaymentForm({...paymentForm, method: e.target.value})} className="w-full h-14 bg-white border-none rounded-2xl px-5 font-bold shadow-sm">
-                              <option value="cash">Efectivo</option>
-                              <option value="transfer">Transferencia</option>
-                              <option value="card">Tarjeta</option>
-                           </select>
-                        </div>
-                        <div className="space-y-2">
-                           <label className="text-[10px] font-black uppercase tracking-widest text-[#847365]/60 block ml-4">Notas</label>
-                           <input value={paymentForm.notes} onChange={(e) => setPaymentForm({...paymentForm, notes: e.target.value})} className="w-full h-14 bg-white border-none rounded-2xl px-5 font-bold shadow-sm" placeholder="..." />
-                        </div>
-                     </div>
-                     <Button disabled={saving} type="submit" className="w-full bg-[#E67E22] text-white h-18 rounded-[32px] font-black text-xl shadow-xl active:scale-95 transition-all py-6 group">
-                        {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : "Confirmar y Generar Recibo"}
-                     </Button>
-                  </form>
                </motion.div>
             </motion.div>
          )}
@@ -777,8 +908,19 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
           const conceptYear = fee ? fee.year : '';
 
           return (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#2D241E]/70 backdrop-blur-xl">
-              <motion.div initial={{ scale: 0.85, y: 40, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.85, y: 40, opacity: 0 }} transition={{ type: 'spring' as const, damping: 25, stiffness: 300 }} className="bg-white w-full max-w-[380px] max-h-[90vh] overflow-y-auto rounded-[28px] shadow-2xl">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/90 backdrop-blur-xl"
+            >
+              <motion.div 
+                initial={{ scale: 0.85, y: 40, opacity: 0 }} 
+                animate={{ scale: 1, y: 0, opacity: 1 }} 
+                exit={{ scale: 0.85, y: 40, opacity: 0 }} 
+                transition={{ type: 'spring' as const, damping: 25, stiffness: 300 }} 
+                className="bg-card w-full max-w-[380px] max-h-[90vh] overflow-y-auto rounded-[28px] shadow-2xl border border-border"
+              >
                 
                 {/* Captura para PDF */}
                 <div ref={receiptRef} className="bg-white">
@@ -870,7 +1012,7 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
                 </div>
 
                 {/* Botones */}
-                <div className="px-5 pb-4 pt-1 grid grid-cols-3 gap-2">
+                <div className="px-5 pb-4 pt-1 grid grid-cols-3 gap-2 bg-card">
                   <button
                     disabled={generatingPdf}
                     onClick={async () => {
@@ -883,9 +1025,9 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
                       link.click();
                       URL.revokeObjectURL(url);
                     }}
-                    className="h-10 bg-[#F5F1EE] hover:bg-[#EDE7E1] text-[#2D241E] rounded-lg font-black text-[8px] uppercase tracking-[0.1em] flex items-center justify-center gap-1 transition-all active:scale-95 disabled:opacity-50"
+                    className="h-10 bg-background hover:bg-muted/50 text-foreground rounded-lg font-black text-[8px] uppercase tracking-[0.1em] flex items-center justify-center gap-1 transition-all active:scale-95 disabled:opacity-50 border border-border"
                   >
-                    {generatingPdf ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                    {generatingPdf ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3 text-primary" />}
                     PDF
                   </button>
                   <button
@@ -897,7 +1039,7 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
                       const printWindow = window.open(url);
                       printWindow?.addEventListener('load', () => printWindow.print());
                     }}
-                    className="h-10 bg-[#2D241E] hover:bg-[#4A3F35] text-white rounded-lg font-black text-[8px] uppercase tracking-[0.1em] flex items-center justify-center gap-1 transition-all active:scale-95 disabled:opacity-50"
+                    className="h-10 bg-primary/10 hover:bg-primary text-primary hover:text-on-primary rounded-lg font-black text-[8px] uppercase tracking-[0.1em] flex items-center justify-center gap-1 transition-all active:scale-95 disabled:opacity-50"
                   >
                     {generatingPdf ? <Loader2 className="w-3 h-3 animate-spin" /> : <Printer className="w-3 h-3" />}
                     Imprimir
@@ -929,7 +1071,7 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
 
                 <button
                   onClick={() => setReceiptModal(null)}
-                  className="w-full h-10 border-t border-[#847365]/10 text-[8px] font-black uppercase tracking-[0.2em] text-[#B5A99A] hover:text-[#2D241E] hover:bg-[#F5F1EE] transition-all"
+                  className="w-full h-12 border-t border-border/40 text-[8px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-all bg-card"
                 >
                   Cerrar
                 </button>
