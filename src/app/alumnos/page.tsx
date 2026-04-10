@@ -61,7 +61,7 @@ interface Student {
   birthdate: string | null;
   age: number | null;
   address: string | null;
-  status: 'active' | 'inactive' | 'on_hold';
+  status: 'active' | 'archived' | 'on_hold';
   enrollment_date: string;
   category_id: string | null;
   discount_value: number;
@@ -94,7 +94,7 @@ export default function AlumnosPage() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
+  const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [hasPromo, setHasPromo] = useState(false);
@@ -215,7 +215,7 @@ export default function AlumnosPage() {
     setSaving(true);
     
     const payload = { 
-      full_name: formData.full_name, 
+      full_name: formData.full_name.trim(), 
       email: formData.email || null, 
       phone: formData.phone || null,
       dni: formData.dni || null,
@@ -225,21 +225,21 @@ export default function AlumnosPage() {
       category_id: formData.category_id || null,
       discount_value: hasPromo ? (parseFloat(formData.discount_value) || 0) : 0,
       discount_type: formData.discount_type,
-      status: 'active',
-      academy_id: academyId // Force academy assignment
+      status: 'active' as const,
+      academy_id: academyId
     };
 
     let error;
     let createdStudentId = null;
 
     if (editingStudent) {
-      const res = await supabase.from('students').update(payload).eq('id', editingStudent.id).select('id').single();
+      const res = await supabase.from('students').update(payload).eq('id', editingStudent.id).select();
       error = res.error;
       createdStudentId = editingStudent.id;
     } else {
-      const res = await supabase.from('students').insert([payload]).select('id').single();
+      const res = await supabase.from('students').insert([payload]).select();
       error = res.error;
-      createdStudentId = res.data?.id;
+      createdStudentId = res.data?.[0]?.id;
     }
 
     if (!error && createdStudentId && formData.category_id) {
@@ -283,7 +283,8 @@ export default function AlumnosPage() {
                period_year: currentYear,
                status: 'pending',
                payment_method: 'cash',
-               notes: 'Alta de Alumno - Cuota Inicial'
+               notes: 'Alta de Alumno - Cuota Inicial',
+               academy_id: academyId // FIX: Añadido academy_id faltante
             });
          }
        } catch (automationError) {
@@ -298,6 +299,8 @@ export default function AlumnosPage() {
       setHasPromo(false);
       setEditingStudent(null);
       setShowAddForm(false);
+      setSearch(""); // Limpiar búsqueda para ver el nuevo alumno
+      setActiveTab('active'); // Asegurar pestaña de activos
       fetchInitialData();
       showAlert("¡Operación Exitosa!", editingStudent ? "Los datos se han actualizado correctamente." : "El alumno ha sido inscripto y se le ha generado su cargo inicial.", "success");
     } else {
@@ -408,7 +411,7 @@ export default function AlumnosPage() {
     }
   };
 
-  const handleStatusChange = async (studentId: string, newStatus: 'active' | 'inactive') => {
+  const handleStatusChange = async (studentId: string, newStatus: 'active' | 'archived') => {
     const { error } = await supabase.from('students').update({ status: newStatus }).eq('id', studentId);
     if (!error) fetchInitialData();
   };
@@ -632,9 +635,15 @@ export default function AlumnosPage() {
   };
 
   const filteredStudents = students.filter((s) => {
-    const matchesSearch = s.full_name.toLowerCase().includes(search.toLowerCase()) || 
-                         (s.dni?.includes(search));
-    const matchesStatus = s.status === activeTab;
+    const matchesSearch = (s.full_name || "").toLowerCase().includes(search.toLowerCase()) || 
+                         (s.dni && s.dni.includes(search));
+    
+    // Soporte para estados antiguos: 'inactive' ahora se considera 'archived'
+    let currentStatus = s.status || 'active';
+    if (currentStatus === 'inactive') currentStatus = 'archived';
+    
+    const matchesStatus = currentStatus === activeTab;
+    
     const matchesCategory = filterCategory === "all" || s.category_id === filterCategory;
     
     const isPaid = payments.some(p => p.student_id === s.id);
@@ -742,10 +751,10 @@ export default function AlumnosPage() {
             Activos
           </button>
           <button 
-            onClick={() => setActiveTab('inactive')}
+            onClick={() => setActiveTab('archived')}
             className={cn(
               "px-8 py-3 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] transition-all",
-              activeTab === 'inactive' 
+              activeTab === 'archived' 
                 ? "bg-card text-primary shadow-md ring-1 ring-border/50" 
                 : "text-foreground/40 hover:text-foreground"
             )}
@@ -1035,7 +1044,7 @@ export default function AlumnosPage() {
                             showConfirm(
                                 s.status === 'active' ? "¿Archivar Legajo?" : "¿Restaurar Legajo?",
                                 s.status === 'active' ? `¿Estás seguro de archivar a ${s.full_name}?` : `¿Deseas activar nuevamente a ${s.full_name}?`,
-                                () => handleStatusChange(s.id, s.status === 'active' ? 'inactive' : 'active')
+                                () => handleStatusChange(s.id, s.status === 'active' ? 'archived' : 'active')
                             );
                         }} 
                         className={cn(
@@ -1046,7 +1055,7 @@ export default function AlumnosPage() {
                          {s.status === 'active' ? <Archive className="w-4 h-4" /> : <ArchiveRestore className="w-4 h-4" />}
                       </button>
 
-                      {s.status === 'inactive' && (
+                      {s.status === 'archived' && (
                         <button 
                           onClick={() => {
                               showConfirm(
@@ -1174,7 +1183,7 @@ export default function AlumnosPage() {
                                 showConfirm(
                                     s.status === 'active' ? "¿Archivar Legajo?" : "¿Restaurar Legajo?",
                                     s.status === 'active' ? `¿Estás seguro de archivar a ${s.full_name}? No aparecerá en los listados activos.` : `¿Deseas activar nuevamente a ${s.full_name}?`,
-                                    () => handleStatusChange(s.id, s.status === 'active' ? 'inactive' : 'active')
+                                    () => handleStatusChange(s.id, s.status === 'active' ? 'archived' : 'active')
                                 );
                             }} 
                             className={cn(
@@ -1186,7 +1195,7 @@ export default function AlumnosPage() {
                              {s.status === 'active' ? <Archive className="w-4 h-4" /> : <ArchiveRestore className="w-4 h-4" />}
                           </button>
 
-                          {s.status === 'inactive' && (
+                          {s.status === 'archived' && (
                             <button 
                               onClick={() => {
                                   showConfirm(
