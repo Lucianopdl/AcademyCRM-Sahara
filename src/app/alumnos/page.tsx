@@ -764,39 +764,6 @@ export default function AlumnosPage() {
         </div>
 
         <AnimatePresence>
-          {showPaymentPanel && selectedStudent && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
-              <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} className="bg-card w-full max-w-xl rounded-[40px] shadow-2xl p-10 border border-border">
-                  <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-2xl bg-primary text-white flex items-center justify-center font-serif font-bold text-xl shadow-lg ring-4 ring-white/20">{selectedStudent.full_name.charAt(0)}</div>
-                      <div>
-                        <h3 className="text-2xl font-serif font-bold text-foreground">Cobrar Cuota</h3>
-                        <p className="text-foreground/60 font-medium text-sm opacity-80">{selectedStudent.full_name}</p>
-                      </div>
-                    </div>
-                    <button onClick={() => setShowPaymentPanel(false)}><XCircle className="w-6 h-6 text-foreground/20 hover:text-red-500" /></button>
-                  </div>
-                  <form onSubmit={handleSavePayment} className="grid grid-cols-2 gap-6">
-                    <div className="col-span-2 space-y-2"><label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Monto a Cobrar ($)</label>
-                      <input type="number" required value={paymentData.amount} onChange={(e) => setPaymentData({...paymentData, amount: e.target.value})} className="w-full h-16 bg-muted/30 border-none rounded-3xl px-6 text-2xl font-black text-foreground focus:ring-4 focus:ring-primary/10 shadow-inner" />
-                    </div>
-                    <div className="space-y-2"><label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Periodo</label>
-                      <select value={paymentData.month} onChange={(e) => setPaymentData({...paymentData, month: parseInt(e.target.value)})} className="w-full h-14 bg-muted/30 border-none rounded-2xl px-5 font-bold">
-                        {Array.from({length: 12}).map((_, i) => <option key={i} value={i + 1}>{new Date(0, i).toLocaleString('es-AR', { month: 'long' })}</option>)}
-                      </select>
-                    </div>
-                    <div className="space-y-2"><label className="text-[10px] font-bold uppercase tracking-widest text-foreground/40">Método</label>
-                      <select value={paymentData.method} onChange={(e) => setPaymentData({...paymentData, method: e.target.value})} className="w-full h-14 bg-muted/30 border-none rounded-2xl px-5 font-bold text-foreground focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer">
-                        <option value="cash" className="bg-card text-foreground">Efectivo</option>
-                        <option value="transfer" className="bg-card text-foreground">Transferencia</option>
-                      </select>
-                    </div>
-                    <Button disabled={saving} type="submit" className="col-span-2 w-full bg-primary text-white h-16 rounded-[24px] font-black text-lg shadow-xl active:scale-95 transition-all">Confirmar Pago</Button>
-                  </form>
-              </motion.div>
-            </motion.div>
-          )}
 
           {showAddForm && (
             <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="bg-card border border-border p-10 rounded-[48px] shadow-warm mb-10">
@@ -920,7 +887,7 @@ export default function AlumnosPage() {
 
         {/* Modal de Cobro (Payment) */}
         <AnimatePresence>
-          {showPaymentModal && (
+          {showPaymentPanel && selectedStudent && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-background/60 backdrop-blur-md">
               <motion.div initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} className="bg-card w-full max-w-xl rounded-[40px] shadow-2xl border border-border overflow-hidden">
                 <div className="bg-gradient-to-br from-primary/10 to-transparent p-8 border-b border-border/50">
@@ -933,47 +900,76 @@ export default function AlumnosPage() {
                   </div>
                 </div>
 
-                <div className="p-8 space-y-6">
-                  <div className="grid grid-cols-2 gap-6">
+                <form onSubmit={handleSavePayment}>
+                  <div className="p-8 space-y-6">
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-foreground/40 pl-1">Mes a Cobrar</label>
+                        <select value={paymentData.month} onChange={(e) => setPaymentData({...paymentData, month: parseInt(e.target.value)})} className="w-full bg-muted/30 border border-border rounded-2xl px-5 py-4 font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer">
+                          {Array.from({length: 12}, (_, i) => (
+                            <option key={i+1} value={i+1} className="bg-card text-foreground">
+                              {new Date(0, i).toLocaleString('es-AR', { month: 'long' })}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-foreground/40 pl-1">Año</label>
+                        <select value={paymentData.year} onChange={(e) => setPaymentData({...paymentData, year: parseInt(e.target.value)})} className="w-full bg-muted/30 border border-border rounded-2xl px-5 py-4 font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer">
+                          <option value={new Date().getFullYear()} className="bg-card text-foreground">{new Date().getFullYear()}</option>
+                          <option value={new Date().getFullYear()+1} className="bg-card text-foreground">{new Date().getFullYear()+1}</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10 flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">Monto a Percibir</p>
+                        <div className="flex items-center gap-1">
+                          <span className="text-3xl font-black text-foreground">$</span>
+                          <input 
+                            type="number" 
+                            value={paymentData.amount} 
+                            onChange={(e) => setPaymentData({...paymentData, amount: e.target.value})}
+                            className="text-3xl font-black bg-transparent border-none outline-none text-foreground w-32"
+                          />
+                        </div>
+                      </div>
+                      <DollarSign className="w-10 h-10 text-primary opacity-20" />
+                    </div>
+
                     <div className="space-y-2">
-                       <label className="text-[10px] font-black uppercase tracking-widest text-foreground/40 pl-1">Mes a Cobrar</label>
-                       <select value={paymentData.month} onChange={(e) => setPaymentData({...paymentData, month: parseInt(e.target.value)})} className="w-full bg-muted/30 border border-border rounded-2xl px-5 py-4 font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer">
-                         {Array.from({length: 12}, (_, i) => <option key={i+1} value={i+1} className="bg-card text-foreground">{months[i]}</option>)}
-                       </select>
-                    </div>
-                    <div className="space-y-2">
-                       <label className="text-[10px] font-black uppercase tracking-widest text-foreground/40 pl-1">Año</label>
-                       <select value={paymentData.year} onChange={(e) => setPaymentData({...paymentData, year: parseInt(e.target.value)})} className="w-full bg-muted/30 border border-border rounded-2xl px-5 py-4 font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer">
-                         <option value={new Date().getFullYear()} className="bg-card text-foreground">{new Date().getFullYear()}</option>
-                         <option value={new Date().getFullYear()+1} className="bg-card text-foreground">{new Date().getFullYear()+1}</option>
-                       </select>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-foreground/40 pl-1">Método de Pago</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { id: 'cash', label: 'Efectivo' },
+                          { id: 'transfer', label: 'Transferencia' },
+                          { id: 'card', label: 'Tarjeta' },
+                          { id: 'other', label: 'Otro' }
+                        ].map((m) => (
+                          <button 
+                            type="button"
+                            key={m.id} 
+                            onClick={() => setPaymentData({...paymentData, method: m.id})} 
+                            className={cn(
+                              "py-4 rounded-2xl font-bold text-sm transition-all border", 
+                              paymentData.method === m.id ? "bg-primary text-white border-primary shadow-lg shadow-primary/20 scale-[1.02]" : "bg-muted/20 text-foreground/60 border-border hover:bg-muted/40"
+                            )}
+                          >
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10 flex items-center justify-between">
-                    <div>
-                       <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">Monto a Percibir</p>
-                       <p className="text-3xl font-black text-foreground">${selectedStudent?.category?.price.toLocaleString()}</p>
-                    </div>
-                    <DollarSign className="w-10 h-10 text-primary opacity-20" />
+                  <div className="p-8 bg-muted/10 flex gap-4">
+                    <button type="button" onClick={() => setShowPaymentPanel(false)} className="flex-1 py-5 rounded-[24px] font-black text-[10px] uppercase tracking-widest text-foreground/40 hover:bg-muted/50 transition-all border border-border/50">Cancelar</button>
+                    <button type="submit" disabled={saving} className="flex-[2] bg-foreground hover:bg-primary text-background hover:text-white py-5 rounded-[24px] font-black text-[10px] uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2">
+                      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle2 className="w-4 h-4" /> Confirmar Cobro</>}
+                    </button>
                   </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-foreground/40 pl-1">Método de Pago</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {['Efectivo', 'Transferencia', 'Tarjeta', 'Otro'].map((m) => (
-                        <button key={m} onClick={() => setPaymentData({...paymentData, method: m})} className={cn("py-4 rounded-2xl font-bold text-sm transition-all border", paymentData.method === m ? "bg-primary text-white border-primary shadow-lg shadow-primary/20 scale-[1.02]" : "bg-muted/20 text-foreground/60 border-border hover:bg-muted/40")}>{m}</button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-8 bg-muted/10 flex gap-4">
-                  <button onClick={() => setShowPaymentModal(false)} className="flex-1 py-5 rounded-[24px] font-black text-[10px] uppercase tracking-widest text-foreground/40 hover:bg-muted/50 transition-all border border-border/50">Cancelar</button>
-                  <button onClick={handleRegisterPayment} disabled={saving} className="flex-[2] bg-foreground hover:bg-primary text-background hover:text-white py-5 rounded-[24px] font-black text-[10px] uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2">
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle2 className="w-4 h-4" /> Confirmar Cobro</>}
-                  </button>
-                </div>
+                </form>
               </motion.div>
             </motion.div>
           )}

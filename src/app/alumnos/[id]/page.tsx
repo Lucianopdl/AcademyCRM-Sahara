@@ -799,11 +799,10 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
                        WhatsApp al tutor
                     </li>
                  </ul>
-              </div>
-           </div>
+               </div>
+            </div>
          </div>
-       </div>
-    </DashboardShell>
+      </div>
 
       {/* Modal de Cobro de Cuota */}
       <AnimatePresence>
@@ -1080,6 +1079,6 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
           );
         })()}
       </AnimatePresence>
-    </div>
+    </DashboardShell>
   );
 }
