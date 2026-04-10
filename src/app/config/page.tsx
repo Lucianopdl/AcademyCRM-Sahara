@@ -74,20 +74,9 @@ export default function ConfigPage() {
         updated_at: new Date().toISOString()
       };
 
-      // Modificado: evitamos onConflict: 'academy_id' para no requerir constraint UNIQUE, 
-      // y usamos update/insert normal
-      if (settings?.id) {
-        const { error } = await supabase
-          .from('settings')
-          .update(updatePayload)
-          .eq('id', settings.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('settings')
-          .insert([updatePayload]);
-        if (error) throw error;
-      }
+      const { error } = await supabase
+        .from('settings')
+        .upsert(updatePayload, { onConflict: 'user_id' }); // El conflicto es por user_id debido al constraint único en bd
       
       setMessage({ type: 'success', text: "¡Configuración guardada correctamente!" });
       setTimeout(() => setMessage(null), 3000);
