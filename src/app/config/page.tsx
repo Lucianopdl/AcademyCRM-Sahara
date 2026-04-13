@@ -21,12 +21,17 @@ import {
   Building2,
   Trash2,
   Camera,
-  Coins
+  Coins,
+  Users,
+  Mail,
+  Lock,
+  UserPlus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { getStaffAction, createStaffAction, deleteStaffAction } from "@/app/actions/staff";
 
 export default function ConfigPage() {
   const { academyId, settings, loading: contextLoading } = useAcademy();
@@ -35,6 +40,12 @@ export default function ConfigPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [activeTab, setActiveTab] = useState('general');
   
+  // Estados para Personal
+  const [staff, setStaff] = useState<any[]>([]);
+  const [loadingStaff, setLoadingStaff] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newStaff, setNewStaff] = useState({ name: "", email: "", password: "" });
+
   const [formData, setFormData] = useState({
     academy_name: "",
     category: "",
@@ -56,6 +67,55 @@ export default function ConfigPage() {
     }
   }, [contextLoading, settings]);
 
+  useEffect(() => {
+    if (activeTab === 'staff' && academyId) {
+      loadStaff();
+    }
+  }, [activeTab, academyId]);
+
+  async function loadStaff() {
+    if (!academyId) return;
+    setLoadingStaff(true);
+    const result = await getStaffAction(academyId);
+    if (result.success) {
+      setStaff(result.data || []);
+    }
+    setLoadingStaff(false);
+  }
+
+  async function handleAddStaff() {
+    if (!academyId) return;
+    if (!newStaff.email || !newStaff.password || !newStaff.name) {
+      setMessage({ type: 'error', text: "Por favor completa todos los campos." });
+      return;
+    }
+
+    setSaving(true);
+    const result = await createStaffAction(academyId, newStaff.email, newStaff.password, newStaff.name);
+    if (result.success) {
+      setMessage({ type: 'success', text: result.message });
+      setShowAddModal(false);
+      setNewStaff({ name: "", email: "", password: "" });
+      loadStaff();
+    } else {
+      setMessage({ type: 'error', text: result.message });
+    }
+    setSaving(false);
+  }
+
+  async function handleDeleteStaff(userId: string) {
+    if (!confirm("¿Estás seguro de eliminar este acceso?")) return;
+    setSaving(true);
+    const result = await deleteStaffAction(userId);
+    if (result.success) {
+      setMessage({ type: 'success', text: result.message });
+      loadStaff();
+    } else {
+      setMessage({ type: 'error', text: result.message });
+    }
+    setSaving(false);
+  }
+
   async function handleSave() {
     try {
       setSaving(true);
@@ -70,13 +130,13 @@ export default function ConfigPage() {
         currency: formData.currency,
         logo_url: formData.logo_url,
         user_id: user.id,
-        academy_id: academyId, // Vinculamos a la academia
+        academy_id: academyId, 
         updated_at: new Date().toISOString()
       };
 
       const { error } = await supabase
         .from('settings')
-        .upsert(updatePayload, { onConflict: 'user_id' }); // El conflicto es por user_id debido al constraint único en bd
+        .upsert(updatePayload, { onConflict: 'user_id' }); 
       
       setMessage({ type: 'success', text: "¡Configuración guardada correctamente!" });
       setTimeout(() => setMessage(null), 3000);
@@ -91,6 +151,7 @@ export default function ConfigPage() {
 
   const tabs = [
     { id: 'general', label: 'Academia', icon: Building2 },
+    { id: 'staff', label: 'Personal', icon: Users },
     { id: 'billing', label: 'Pagos y Moneda', icon: Coins },
     { id: 'security', label: 'Seguridad', icon: Shield },
     { id: 'profile', label: 'Perfil', icon: User },
@@ -119,7 +180,7 @@ export default function ConfigPage() {
               Tu Academia
             </h1>
             <p className="text-muted-foreground font-light text-xl mt-4 max-w-2xl leading-relaxed">
-              Personaliza el motor de tu institución. Estos cambios se reflejarán en todos tus recibos y paneles administrativos.
+              Personaliza el motor de tu institución y gestiona el acceso de tus profesores.
             </p>
           </motion.div>
         </header>
@@ -161,7 +222,7 @@ export default function ConfigPage() {
                initial={{ opacity: 0, y: 20 }}
                animate={{ opacity: 1, y: 0 }}
                transition={{ delay: 0.3 }}
-               className="bg-card/30 backdrop-blur-2xl border border-border/40 rounded-[32px] p-8 lg:p-12 shadow-2xl shadow-black/10 overflow-hidden relative"
+               className="bg-card/30 backdrop-blur-2xl border border-border/40 rounded-[32px] p-8 lg:p-12 shadow-2xl shadow-black/10 overflow-hidden relative min-h-[500px]"
              >
                 {/* Decoración de fondo */}
                 <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none">
@@ -280,6 +341,151 @@ export default function ConfigPage() {
                           </div>
                        </section>
                     </motion.div>
+                  ) : activeTab === 'staff' ? (
+                    <motion.div 
+                      key="staff" 
+                      initial={{ opacity: 0, x: 20 }} 
+                      animate={{ opacity: 1, x: 0 }} 
+                      exit={{ opacity: 0, x: -20 }} 
+                      className="space-y-8 relative z-10"
+                    >
+                       <div className="flex items-center justify-between border-b border-border/40 pb-6">
+                          <div className="flex items-center gap-4">
+                             <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                                <Users className="w-6 h-6" />
+                             </div>
+                             <h3 className="text-3xl font-serif font-medium italic text-foreground tracking-tight">Gestión de Personal</h3>
+                          </div>
+                          <Button 
+                            onClick={() => setShowAddModal(true)}
+                            className="bg-primary hover:bg-primary/90 rounded-2xl px-6 h-14 font-bold flex items-center gap-2 shadow-lg shadow-primary/20"
+                          >
+                             <UserPlus className="w-5 h-5" />
+                             Agregar Profesor
+                          </Button>
+                       </div>
+
+                       {loadingStaff ? (
+                          <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                             <Loader2 className="w-10 h-10 animate-spin text-primary/40" />
+                             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground/40">Cargando personal...</p>
+                          </div>
+                       ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                             {staff.length === 0 ? (
+                                <div className="col-span-full py-20 text-center bg-card/20 rounded-[32px] border border-dashed border-border/40">
+                                   <p className="text-muted-foreground font-serif italic text-lg">No hay otros profesores registrados todavía.</p>
+                                </div>
+                             ) : staff.map((member) => (
+                                <motion.div 
+                                  key={member.id}
+                                  initial={{ opacity: 0, scale: 0.95 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  className="bg-card/40 border border-border/40 p-6 rounded-[28px] flex items-center justify-between group hover:border-primary/40 transition-all duration-500 shadow-xl"
+                                >
+                                   <div className="flex items-center gap-4">
+                                      <div className="w-14 h-14 bg-background rounded-2xl flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors border border-border/20 shadow-inner">
+                                         <User className="w-7 h-7" />
+                                      </div>
+                                      <div>
+                                         <h4 className="font-bold text-lg leading-tight">{member.name}</h4>
+                                         <p className="text-sm text-muted-foreground font-light">{member.email}</p>
+                                         <span className="inline-block mt-2 px-3 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-full">
+                                            {member.role === 'admin' ? 'Administrador' : 'Profesor'}
+                                         </span>
+                                      </div>
+                                   </div>
+                                   <button 
+                                      onClick={() => handleDeleteStaff(member.id)}
+                                      className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 opacity-0 group-hover:opacity-100 hover:bg-red-500 hover:text-white transition-all duration-300 flex items-center justify-center"
+                                   >
+                                      <Trash2 className="w-5 h-5" />
+                                   </button>
+                                </motion.div>
+                             ))}
+                          </div>
+                       )}
+
+                       {/* Modal Formulario Agregar */}
+                       <AnimatePresence>
+                          {showAddModal && (
+                            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                               <motion.div 
+                                 initial={{ opacity: 0 }} 
+                                 animate={{ opacity: 1 }} 
+                                 exit={{ opacity: 0 }}
+                                 onClick={() => setShowAddModal(false)}
+                                 className="absolute inset-0 bg-background/80 backdrop-blur-md" 
+                               />
+                               <motion.div 
+                                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                 animate={{ opacity: 1, scale: 1, y: 0 }}
+                                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                                 className="bg-card border border-border/40 rounded-[40px] p-10 shadow-2xl w-full max-w-lg relative z-10"
+                               >
+                                  <h3 className="text-3xl font-serif font-medium italic mb-8">Nuevo Acceso</h3>
+                                  <div className="space-y-6">
+                                     <div className="space-y-2">
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Nombre Completo</label>
+                                        <div className="relative">
+                                           <User className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                                           <input 
+                                             type="text" 
+                                             value={newStaff.name}
+                                             onChange={(e) => setNewStaff({...newStaff, name: e.target.value})}
+                                             className="w-full bg-background border border-border/40 rounded-2xl pl-14 pr-6 py-5 focus:ring-4 focus:ring-primary/10 outline-none transition-all font-semibold"
+                                             placeholder="Ej: Profe Lucía"
+                                           />
+                                        </div>
+                                     </div>
+                                     <div className="space-y-2">
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Correo Electrónico</label>
+                                        <div className="relative">
+                                           <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                                           <input 
+                                             type="email" 
+                                             value={newStaff.email}
+                                             onChange={(e) => setNewStaff({...newStaff, email: e.target.value})}
+                                             className="w-full bg-background border border-border/40 rounded-2xl pl-14 pr-6 py-5 focus:ring-4 focus:ring-primary/10 outline-none transition-all font-semibold"
+                                             placeholder="correo@ejemplo.com"
+                                           />
+                                        </div>
+                                     </div>
+                                     <div className="space-y-2">
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Contraseña Temporal</label>
+                                        <div className="relative">
+                                           <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                                           <input 
+                                             type="password" 
+                                             value={newStaff.password}
+                                             onChange={(e) => setNewStaff({...newStaff, password: e.target.value})}
+                                             className="w-full bg-background border border-border/40 rounded-2xl pl-14 pr-6 py-5 focus:ring-4 focus:ring-primary/10 outline-none transition-all font-semibold tracking-widest"
+                                             placeholder="••••••••"
+                                           />
+                                        </div>
+                                     </div>
+                                     
+                                     <div className="pt-6 flex gap-4">
+                                        <Button 
+                                          onClick={() => setShowAddModal(false)}
+                                          className="flex-1 bg-transparent hover:bg-card/80 text-foreground border border-border/40 h-16 rounded-2xl font-bold"
+                                        >
+                                           Cancelar
+                                        </Button>
+                                        <Button 
+                                          onClick={handleAddStaff}
+                                          disabled={saving}
+                                          className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground h-16 rounded-2xl font-bold shadow-xl shadow-primary/20"
+                                        >
+                                           {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : "Crear Cuenta"}
+                                        </Button>
+                                     </div>
+                                  </div>
+                               </motion.div>
+                            </div>
+                          )}
+                       </AnimatePresence>
+                    </motion.div>
                   ) : activeTab === 'billing' ? (
                     <motion.div key="billing" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-12 relative z-10">
                        <section className="space-y-8">
@@ -354,20 +560,22 @@ export default function ConfigPage() {
                       </AnimatePresence>
                    </div>
                    
-                   <Button 
-                      onClick={handleSave} 
-                      disabled={saving} 
-                      className="bg-primary hover:bg-primary/90 text-primary-foreground px-14 h-20 rounded-[28px] font-bold text-xl shadow-2xl shadow-primary/30 active:scale-[0.97] transition-all flex items-center gap-4 group min-w-[280px]"
-                   >
-                      {saving ? (
-                         <Loader2 className="w-7 h-7 animate-spin" />
-                      ) : (
-                         <>
-                           <Save className="w-6 h-6 group-hover:scale-110 transition-transform" /> 
-                           Guardar Cambios
-                         </>
-                      )}
-                   </Button>
+                   {activeTab !== 'staff' && (
+                     <Button 
+                        onClick={handleSave} 
+                        disabled={saving} 
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground px-14 h-20 rounded-[28px] font-bold text-xl shadow-2xl shadow-primary/30 active:scale-[0.97] transition-all flex items-center gap-4 group min-w-[280px]"
+                     >
+                        {saving ? (
+                           <Loader2 className="w-7 h-7 animate-spin" />
+                        ) : (
+                           <>
+                             <Save className="w-6 h-6 group-hover:scale-110 transition-transform" /> 
+                             Guardar Cambios
+                           </>
+                        )}
+                     </Button>
+                   )}
                 </div>
              </motion.div>
           </div>
@@ -376,4 +584,3 @@ export default function ConfigPage() {
     </div>
   );
 }
-const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
