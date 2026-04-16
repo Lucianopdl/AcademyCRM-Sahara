@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Manrope, EB_Garamond } from "next/font/google";
 import "./globals.css";
 import { AcademyProvider } from "@/hooks/use-academy";
+import { BottomNavigation } from "@/components/navigation/BottomNavigation";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -14,11 +15,21 @@ const ebGaramond = EB_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "Academia CRM | Sahara Management",
+  title: "Academy CRM | Sahara",
   description: "Sistema de gestión integral para academias de alto nivel.",
+  manifest: "/manifest.json",
+  themeColor: "#000000",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Academy CRM",
+  },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
-    icon: "/icon.png",
-    apple: "/icon.png",
+    icon: "/logo.png",
+    apple: "/logo.png",
   },
 };
 
@@ -34,7 +45,10 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col font-sans transition-colors duration-300">
         <AcademyProvider>
-          {children}
+          <main className="flex-1 pb-24 md:pb-0">
+            {children}
+          </main>
+          <BottomNavigation />
         </AcademyProvider>
       </body>
     </html>

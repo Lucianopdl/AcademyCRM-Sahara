@@ -742,7 +742,7 @@ export default function AlumnosPage() {
           <button 
             onClick={() => setActiveTab('active')}
             className={cn(
-              "px-8 py-3 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] transition-all",
+              "px-8 py-4 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] transition-all",
               activeTab === 'active' 
                 ? "bg-card text-primary shadow-md ring-1 ring-border/50" 
                 : "text-foreground/40 hover:text-foreground"
@@ -753,7 +753,7 @@ export default function AlumnosPage() {
           <button 
             onClick={() => setActiveTab('archived')}
             className={cn(
-              "px-8 py-3 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] transition-all",
+              "px-8 py-4 rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] transition-all",
               activeTab === 'archived' 
                 ? "bg-card text-primary shadow-md ring-1 ring-border/50" 
                 : "text-foreground/40 hover:text-foreground"
@@ -1025,111 +1025,120 @@ export default function AlumnosPage() {
         <div className="space-y-4 mb-24">
           
           {/* VISTA MÓVIL: Tarjetas (grid 1 col) */}
-          <div className="grid grid-cols-1 gap-4 lg:hidden">
+          <div className="grid grid-cols-1 gap-5 lg:hidden">
             {loading ? (
               <div className="py-20 text-center"><Loader2 className="w-10 h-10 animate-spin text-primary mx-auto opacity-40" /></div>
             ) : filteredStudents.map((s) => {
               const payment = payments.find(p => p.student_id === s.id);
               const isPaid = payment?.status === 'completed';
               const hasPending = payment?.status === 'pending';
+              const studentNameFirst = s.full_name.split(' ')[0];
+              const whatsappLink = s.phone ? `https://wa.me/${s.phone.replace(/\D/g, '')}` : null;
               
               return (
                 <motion.div 
                   key={s.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
                   className={cn(
-                    "bg-card rounded-3xl p-5 border shadow-sm relative overflow-hidden transition-all",
+                    "bg-card rounded-[32px] p-6 border shadow-sm relative overflow-hidden transition-all active:bg-muted/30",
                     selectedIds.includes(s.id) ? "border-primary ring-1 ring-primary" : "border-border"
                   )}
                 >
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-serif font-bold text-xl shadow-sm">
+                  {/* Status Indicator Bar */}
+                  <div className={cn(
+                    "absolute top-0 left-0 w-1.5 h-full",
+                    isPaid ? "bg-emerald-500" : hasPending ? "bg-rose-500" : "bg-muted"
+                  )} />
+
+                  <div className="flex justify-between items-start mb-5 pl-2">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-serif font-black text-2xl shadow-sm border border-primary/10">
                         {s.full_name.charAt(0)}
                       </div>
                       <div className="min-w-0">
-                        <Link href={`/alumnos/${s.id}`} className="font-bold text-foreground leading-tight block truncate">{s.full_name}</Link>
-                        <p className="text-[10px] font-black text-primary uppercase tracking-wider">{categories.find(c => c.id === s.category_id)?.name || 'SIN CLASE'}</p>
+                        <Link href={`/alumnos/${s.id}`} className="font-serif font-black text-xl text-foreground leading-tight block truncate group-active:text-primary transition-colors">{s.full_name}</Link>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] font-black text-primary uppercase tracking-[0.1em] bg-primary/5 px-2 py-0.5 rounded-md border border-primary/10">
+                            {categories.find(c => c.id === s.category_id)?.name || 'SIN CLASE'}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => openEdit(s)} className="p-2 bg-muted rounded-xl text-muted-foreground"><Pencil className="w-4 h-4" /></button>
-                      <button onClick={() => openPayment(s)} className="p-2 bg-primary/10 rounded-xl text-primary"><Receipt className="w-4 h-4" /></button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex flex-col">
-                      <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/60">DNI</span>
-                      <span className="text-xs font-bold text-foreground/80">{s.dni || "-"}</span>
-                    </div>
-                    <div>
-                      {isPaid ? (
-                        <span className="bg-emerald-500/10 text-emerald-600 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border border-emerald-500/20">Al Día</span>
-                      ) : hasPending ? (
-                        <span className="bg-rose-500/10 text-rose-500 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border border-rose-500/20">Deuda: ${payment?.amount}</span>
-                      ) : (
-                        <span className="bg-muted text-muted-foreground px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border border-border/50">Sin Cargo</span>
+                    
+                    <button 
+                      onClick={() => toggleSelectOne(s.id)}
+                      className={cn(
+                        "w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all active:scale-90",
+                        selectedIds.includes(s.id) ? "bg-primary border-primary shadow-lg shadow-primary/20" : "border-border bg-muted/20"
                       )}
+                    >
+                      {selectedIds.includes(s.id) && <Check className="w-5 h-5 text-white stroke-[4]" />}
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mb-6 pl-2">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        <IdCard className="w-3 h-3 text-muted-foreground/40" />
+                        <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/60">DNI</span>
+                      </div>
+                      <p className="text-sm font-bold text-foreground/80">{s.dni || "—"}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        <DollarSign className="w-3 h-3 text-muted-foreground/40" />
+                        <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/60">Cuenta</span>
+                      </div>
+                      <div>
+                        {isPaid ? (
+                          <span className="text-emerald-600 text-xs font-black uppercase tracking-widest">Al Día</span>
+                        ) : hasPending ? (
+                          <span className="text-rose-500 text-xs font-black uppercase tracking-widest">-${payment?.amount}</span>
+                        ) : (
+                          <span className="text-muted-foreground/40 text-xs font-black uppercase tracking-widest">S/ Cargo</span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-4 border-t border-border/50 gap-2">
+                  {/* Mobile Actions - Thumb Friendly */}
+                  <div className="flex items-center justify-between pt-5 border-t border-border/50 gap-3">
                     <div className="flex items-center gap-2">
                       <button 
-                        onClick={() => toggleSelectOne(s.id)}
-                        className="flex items-center gap-2"
-                      >
-                        <div className={cn(
-                          "w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all",
-                          selectedIds.includes(s.id) ? "bg-primary border-primary" : "border-border bg-muted/20"
-                        )}>
-                          {selectedIds.includes(s.id) && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
-                        </div>
-                      </button>
-
-                      <button 
                         onClick={() => openEdit(s)}
-                        className="w-10 h-10 rounded-xl border border-border/50 bg-muted/10 flex items-center justify-center text-foreground active:scale-90 transition-all hover:bg-muted/30"
+                        className="w-11 h-11 rounded-xl border border-border/50 bg-muted/10 flex items-center justify-center text-foreground active:scale-95 transition-all shadow-sm"
+                        title="Editar"
                       >
-                        <Pencil className="w-4 h-4" />
+                        <Pencil className="w-5 h-5" />
                       </button>
 
                       <button 
-                        onClick={() => {
-                            showConfirm(
-                                s.status === 'active' ? "¿Archivar Legajo?" : "¿Restaurar Legajo?",
-                                s.status === 'active' ? `¿Estás seguro de archivar a ${s.full_name}?` : `¿Deseas activar nuevamente a ${s.full_name}?`,
-                                () => handleStatusChange(s.id, s.status === 'active' ? 'archived' : 'active')
-                            );
-                        }} 
-                        className={cn(
-                          "w-10 h-10 rounded-xl border border-border/50 bg-muted/10 flex items-center justify-center transition-all active:scale-90 hover:bg-muted/30",
-                          s.status === 'active' ? "text-muted-foreground/40" : "text-emerald-600"
-                        )}
+                        onClick={() => openPayment(s)}
+                        className="w-11 h-11 rounded-xl border border-primary/20 bg-primary/5 flex items-center justify-center text-primary active:scale-95 transition-all shadow-sm"
+                        title="Pagos"
                       >
-                         {s.status === 'active' ? <Archive className="w-4 h-4" /> : <ArchiveRestore className="w-4 h-4" />}
+                        <Receipt className="w-5 h-5" />
                       </button>
 
-                      {s.status === 'archived' && (
-                        <button 
-                          onClick={() => {
-                              showConfirm(
-                                  "¿Eliminar Permanentemente?",
-                                  `Esta acción ELIMINARÁ DEFINITIVAMENTE a ${s.full_name}. No se puede deshacer.`,
-                                  () => handleDeleteStudent(s.id)
-                              );
-                          }} 
-                          className="w-10 h-10 rounded-xl border border-rose-500/10 bg-rose-500/5 flex items-center justify-center text-rose-400 active:scale-90 transition-all hover:bg-rose-500 hover:text-white"
+                      {whatsappLink && (
+                        <a 
+                          href={whatsappLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-11 h-11 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex items-center justify-center text-emerald-500 active:scale-95 transition-all shadow-sm"
                         >
-                           <Trash2 className="w-4 h-4" />
-                        </button>
+                          <MessageCircle className="w-5 h-5" />
+                        </a>
                       )}
                     </div>
                     
-                    <Link href={`/alumnos/${s.id}`} className="text-[9px] font-black uppercase tracking-widest text-primary flex items-center gap-2 bg-primary/10 px-4 py-2.5 rounded-xl border border-primary/20 hover:bg-primary/20 transition-all">
-                      Perfil <Eye className="w-3.5 h-3.5" />
+                    <Link 
+                      href={`/alumnos/${s.id}`} 
+                      className="flex-1 max-w-[120px] h-11 text-[10px] font-black uppercase tracking-widest text-white bg-foreground hover:bg-primary rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all"
+                    >
+                      Legajo <Eye className="w-4 h-4" />
                     </Link>
                   </div>
                 </motion.div>
