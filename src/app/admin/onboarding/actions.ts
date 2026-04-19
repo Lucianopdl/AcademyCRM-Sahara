@@ -110,8 +110,6 @@ export async function updateAcademyNameAction(academyId: string, newName: string
 
 export async function deleteAcademyAction(academyId: string) {
   try {
-    // Nota: El borrado en cascada debe estar configurado en la DB.
-    // Si no, tendremos que borrar manualmente alumnos, pagos, etc.
     const { error } = await supabaseAdmin
       .from('academies')
       .delete()
@@ -134,9 +132,43 @@ export async function checkAcademyStatusAction(academyId: string) {
       .eq('id', academyId)
       .single();
 
-    if (error || !data) return 'active'; // Por seguridad, si falla, asumimos activo pero logueamos
+    if (error || !data) return 'active';
     return data.status;
   } catch (e) {
     return 'active';
+  }
+}
+
+export async function getAcademiesWithEmailsAction() {
+  try {
+    const { data: academies, error: academyError } = await supabaseAdmin
+      .from('academies')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (academyError) throw academyError;
+
+    const academiesWithEmails = await Promise.all(
+      academies.map(async (academy) => {
+        const { data: profile } = await supabaseAdmin
+          .from('user_profiles')
+          .select('id')
+          .eq('academy_id', academy.id)
+          .eq('role', 'admin')
+          .single();
+
+        let email = "N/A";
+        if (profile) {
+          const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(profile.id);
+          email = authUser?.user?.email || "N/A";
+        }
+
+        return { ...academy, adminEmail: email };
+      })
+    );
+
+    return { success: true, data: academiesWithEmails };
+  } catch (error: any) {
+    return { success: false, message: error.message };
   }
 }

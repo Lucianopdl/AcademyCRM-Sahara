@@ -28,7 +28,8 @@ import {
   createNewAcademyAction, 
   toggleAcademyStatusAction,
   updateAcademyNameAction,
-  deleteAcademyAction
+  deleteAcademyAction,
+  getAcademiesWithEmailsAction
 } from "./actions";
 
 export default function OnboardingPage() {
@@ -43,8 +44,11 @@ export default function OnboardingPage() {
   // Cargar academias para gestión
   async function fetchAcademies() {
     setLoadingAcademies(true);
-    const { data, error } = await supabase.from('academies').select('*').order('created_at', { ascending: false });
-    if (data) setManagedAcademies(data);
+    const res = await getAcademiesWithEmailsAction();
+    console.log("Academias cargadas:", res);
+    if (res.success && res.data) {
+      setManagedAcademies(res.data);
+    }
     setLoadingAcademies(false);
   }
 
@@ -348,6 +352,7 @@ export default function OnboardingPage() {
               <thead>
                 <tr className="border-b border-[#F5F1EE]">
                   <th className="pb-4 text-left text-[10px] font-black uppercase text-[#847365]/50 px-4">Academia</th>
+                  <th className="pb-4 text-left text-[10px] font-black uppercase text-[#847365]/50 px-4">Admin Email</th>
                   <th className="pb-4 text-left text-[10px] font-black uppercase text-[#847365]/50 px-4">Estado</th>
                   <th className="pb-4 text-left text-[10px] font-black uppercase text-[#847365]/50 px-4">Fecha Alta</th>
                   <th className="pb-4 text-right text-[10px] font-black uppercase text-[#847365]/50 px-4">Acciones</th>
@@ -381,6 +386,9 @@ export default function OnboardingPage() {
                           <span className="font-bold text-[#2D241E]">{academy.name}</span>
                         )}
                       </div>
+                    </td>
+                    <td className="py-6 px-4">
+                      <span className="text-xs font-bold text-[#847365] break-all">{academy.adminEmail}</span>
                     </td>
                     <td className="py-6 px-4">
                       <div className={cn(
