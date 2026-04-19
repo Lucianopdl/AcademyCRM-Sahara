@@ -22,14 +22,14 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Academy CRM",
+    title: "Sahara Academy",
   },
   formatDetection: {
     telephone: false,
   },
   icons: {
-    icon: "/logo.png",
-    apple: "/logo.png",
+    icon: "/sahara_logo.png",
+    apple: "/sahara_logo.png",
   },
 };
 

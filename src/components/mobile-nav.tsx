@@ -15,7 +15,8 @@ import {
   LogOut,
   X,
   Bell,
-  ShieldCheck
+  ShieldCheck,
+  Briefcase
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -32,6 +33,7 @@ const extraItems = [
   { name: "Clases y Talleres", href: "/clases", icon: GraduationCap },
   { name: "Cuotas y Pagos", href: "/pagos", icon: CreditCard },
   { name: "Notificaciones", href: "#", icon: Bell, disabled: true },
+  { name: "Maletín del Profe", href: "/maletin", icon: Briefcase },
   { name: "Configuración", href: "/config", icon: Settings },
 ];
 

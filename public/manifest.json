@@ -1,20 +1,20 @@
 {
   "name": "Academy CRM | Sahara",
-  "short_name": "Academy",
-  "description": "Academy CRM - Sahara Management System",
+  "short_name": "Sahara",
+  "description": "Sahara Academy - Management System",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "theme_color": "#ffffff",
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "/sahara_logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/logo.png",
+      "src": "/sahara_logo.png",
       "sizes": "512x512",
       "type": "image/png"
     }

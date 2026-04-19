@@ -15,6 +15,8 @@ import {
   ClipboardCheck,
   Wallet,
   ShieldCheck,
+  FolderOpen,
+  Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -27,6 +29,7 @@ const navItems = [
   { name: "Cuotas y Pagos", href: "/pagos", icon: CreditCard },
   { name: "Asistencias", href: "/asistencias", icon: ClipboardCheck },
   { name: "Gastos y Finanzas", href: "/finanzas", icon: Wallet },
+  { name: "Maletín del Profe", href: "/maletin", icon: Briefcase },
   { name: "Configuración", href: "/config", icon: Settings },
 ];
 
