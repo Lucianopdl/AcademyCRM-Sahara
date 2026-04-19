@@ -39,6 +39,8 @@ export function Sidebar() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
+  const [hasSeenFeature, setHasSeenFeature] = useState(true);
+
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme");
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -46,6 +48,9 @@ export function Sidebar() {
       setIsDarkMode(true);
       document.documentElement.classList.add("dark");
     }
+
+    const seen = localStorage.getItem('hasSeenMaletinFeature');
+    setHasSeenFeature(seen === 'true');
 
     async function getUser() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -96,10 +101,18 @@ export function Sidebar() {
         <p className="px-4 text-[11px] font-bold text-secondary/50 uppercase tracking-widest mb-4">Principal</p>
         {navItems.map((item) => {
           const isActive = pathname === item.href;
+          const isMaletin = item.href === "/maletin";
+
           return (
             <Link
               key={item.name}
               href={item.href}
+              onClick={() => {
+                if (isMaletin) {
+                  localStorage.setItem('hasSeenMaletinFeature', 'true');
+                  setHasSeenFeature(true);
+                }
+              }}
               className={cn(
                 "group flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-300",
                 isActive 
@@ -108,7 +121,12 @@ export function Sidebar() {
               )}
             >
               <div className="flex items-center gap-3">
-                <item.icon className={cn("w-5 h-5", isActive ? "text-primary" : "text-secondary group-hover:text-primary")} />
+                <div className="relative">
+                  <item.icon className={cn("w-5 h-5", isActive ? "text-primary" : "text-secondary group-hover:text-primary")} />
+                  {isMaletin && !hasSeenFeature && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full border-2 border-card animate-pulse" />
+                  )}
+                </div>
                 <span className="font-medium text-sm">{item.name}</span>
               </div>
               {isActive && (

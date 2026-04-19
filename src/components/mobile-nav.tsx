@@ -42,8 +42,12 @@ export function MobileNav() {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [hasSeenFeature, setHasSeenFeature] = useState(true);
 
   React.useEffect(() => {
+    const seen = localStorage.getItem('hasSeenMaletinFeature');
+    setHasSeenFeature(seen === 'true');
+
     async function getUser() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) setUserEmail(user.email || null);
@@ -89,22 +93,36 @@ export function MobileNav() {
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-8">
-                {extraItems.map((item) => (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={() => !item.disabled && setIsMenuOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 p-4 rounded-2xl transition-all duration-200 border border-transparent",
-                      pathname === item.href 
-                        ? "bg-primary/10 text-primary border-primary/20" 
-                        : "bg-background/50 text-secondary hover:bg-primary/5"
-                    )}
-                  >
-                    <item.icon className="w-5 h-5" />
-                    <span className="text-sm font-semibold">{item.name}</span>
-                  </Link>
-                ))}
+                {extraItems.map((item) => {
+                  const isMaletin = item.href === "/maletin";
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      onClick={() => {
+                        if (!item.disabled) {
+                          if (isMaletin) {
+                            localStorage.setItem('hasSeenMaletinFeature', 'true');
+                            setHasSeenFeature(true);
+                          }
+                          setIsMenuOpen(false);
+                        }
+                      }}
+                      className={cn(
+                        "flex items-center gap-3 p-4 rounded-2xl transition-all duration-200 border border-transparent relative",
+                        pathname === item.href 
+                          ? "bg-primary/10 text-primary border-primary/20" 
+                          : "bg-background/50 text-secondary hover:bg-primary/5"
+                      )}
+                    >
+                      <item.icon className="w-5 h-5" />
+                      <span className="text-sm font-semibold">{item.name}</span>
+                      {isMaletin && !hasSeenFeature && (
+                        <span className="absolute top-3 right-3 w-2 h-2 bg-rose-500 rounded-full border border-white animate-pulse" />
+                      )}
+                    </Link>
+                  );
+                })}
 
                 {/* SUPER ADMIN MOBILE LINK */}
                 {userEmail === 'lucianopdl2401@gmail.com' && (

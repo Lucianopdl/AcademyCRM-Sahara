@@ -3,12 +3,19 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Users, CalendarCheck, DollarSign, UserCircle2 } from "lucide-react";
+import { Home, Users, CalendarCheck, DollarSign, UserCircle2, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 
 export function BottomNavigation() {
   const pathname = usePathname();
+
+  const [hasSeenFeature, setHasSeenFeature] = React.useState(true);
+
+  React.useEffect(() => {
+    const seen = localStorage.getItem('hasSeenMaletinFeature');
+    setHasSeenFeature(seen === 'true');
+  }, []);
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -24,14 +31,14 @@ export function BottomNavigation() {
       href: "/",
     },
     {
+      label: "Maletín",
+      icon: Briefcase,
+      href: "/maletin",
+    },
+    {
       label: "Alumnos",
       icon: Users,
       href: "/alumnos",
-    },
-    {
-      label: "Asis.",
-      icon: CalendarCheck,
-      href: "/asistencias",
     },
     {
       label: "Pagos",
@@ -50,6 +57,12 @@ export function BottomNavigation() {
           <Link
             key={item.href}
             href={item.href}
+            onClick={() => {
+              if (item.label === "Maletín") {
+                localStorage.setItem('hasSeenMaletinFeature', 'true');
+                setHasSeenFeature(true);
+              }
+            }}
             className={cn(
               "flex flex-col items-center gap-1.5 transition-all duration-300 active:scale-90",
               isActive ? "text-primary" : "text-foreground/40"
@@ -57,11 +70,14 @@ export function BottomNavigation() {
           >
             <div
               className={cn(
-                "p-2 rounded-2xl transition-all duration-300",
+                "p-2 rounded-2xl transition-all duration-300 relative",
                 isActive ? "bg-primary/20 shadow-sm" : "bg-transparent"
               )}
             >
               <Icon className={cn("w-6 h-6", isActive ? "stroke-[2.5px]" : "stroke-2")} />
+              {item.label === "Maletín" && !hasSeenFeature && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full border border-white animate-pulse" />
+              )}
             </div>
             <span
               className={cn(

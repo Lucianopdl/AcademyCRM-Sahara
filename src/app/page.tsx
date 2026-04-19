@@ -18,11 +18,13 @@ import {
   Sparkles,
   FileText,
   Award,
-  ShieldCheck
+  ShieldCheck,
+  Info
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { NewFeatureModal } from "@/components/modals/NewFeatureModal";
 
 export default function Dashboard() {
   const [academyInfo, setAcademyInfo] = useState({ name: 'Tu Academia', rubro: 'Gestión' });
@@ -33,10 +35,15 @@ export default function Dashboard() {
     paymentsTotal: 0
   });
   const [loading, setLoading] = useState(true);
+  const [showNotificationDot, setShowNotificationDot] = useState(false); 
+
 
   const { academyId, userId, loading: contextLoading } = useAcademy();
 
   useEffect(() => {
+    const seen = localStorage.getItem('hasSeenMaletinFeature');
+    setShowNotificationDot(seen !== 'true');
+
     async function fetchDashboardData() {
       if (!academyId || contextLoading) return;
       setLoading(true);
@@ -111,18 +118,29 @@ export default function Dashboard() {
             <p className="text-[8px] font-black uppercase tracking-[0.5em] text-muted-foreground/40 ml-1">Dashboard v3.0 • Sahara Audit</p>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto">
              <div className="relative group hidden md:block">
-               <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/30 group-focus-within:text-primary transition-all" />
-               <input 
-                placeholder="Explorar..." 
-                className="bg-card/50 border border-border/40 rounded-2xl pl-12 pr-6 py-3 h-12 text-[10px] font-medium focus:ring-4 focus:ring-primary/5 w-56 shadow-sm outline-none transition-all"
-              />
+                <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/30 group-focus-within:text-primary transition-all" />
+                <input 
+                 placeholder="Explorar..." 
+                 className="bg-card/50 border border-border/40 rounded-2xl pl-12 pr-6 py-3 h-12 text-[10px] font-medium focus:ring-4 focus:ring-primary/5 w-56 shadow-sm outline-none transition-all"
+               />
              </div>
-             <Button variant="outline" className="rounded-full h-12 w-12 bg-card border-border/40 text-muted-foreground hover:bg-white hover:text-primary transition-all shadow-sm relative group">
-                <Bell className="w-4 h-4 transition-transform group-hover:rotate-12" />
-                <span className="absolute top-3 right-3 w-1.5 h-1.5 bg-rose-500 rounded-full border-2 border-background" />
-             </Button>
+             <div className="flex items-center gap-3 ml-auto md:ml-0">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    localStorage.setItem('hasSeenMaletinFeature', 'true');
+                    setShowNotificationDot(false);
+                  }}
+                  className="rounded-full h-12 w-12 bg-card border-border/40 text-muted-foreground hover:bg-white hover:text-primary transition-all shadow-sm relative group"
+                >
+                  <Bell className="w-4 h-4 transition-transform group-hover:rotate-12" />
+                  {showNotificationDot && (
+                    <span className="absolute top-3 right-3 w-1.5 h-1.5 bg-rose-500 rounded-full border-2 border-background animate-pulse" />
+                  )}
+                </Button>
+             </div>
           </div>
         </motion.header>
 
@@ -255,7 +273,9 @@ export default function Dashboard() {
                </p>
             </div>
         </footer>
+        <NewFeatureModal />
       </div>
+
     </DashboardShell>
   );
 }
