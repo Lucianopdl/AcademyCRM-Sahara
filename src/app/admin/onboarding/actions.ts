@@ -62,7 +62,14 @@ export async function createNewAcademyAction(formData: FormData) {
     if (settingsError) throw settingsError;
 
     revalidatePath("/admin/onboarding");
-    return { success: true, message: `Academia '${academyName}' creada con éxito para ${adminEmail}` };
+    return { 
+      success: true, 
+      message: `Academia '${academyName}' creada con éxito`,
+      credentials: {
+        email: adminEmail,
+        password: adminPassword
+      }
+    };
 
   } catch (error: any) {
     console.error("Error en Onboarding:", error);

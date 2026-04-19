@@ -33,7 +33,7 @@ import {
 
 export default function OnboardingPage() {
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  const [status, setStatus] = useState<{ type: 'success' | 'error', message: string, credentials?: { email: string, password: string } } | null>(null);
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const [managedAcademies, setManagedAcademies] = useState<any[]>([]);
   const [loadingAcademies, setLoadingAcademies] = useState(true);
@@ -103,7 +103,11 @@ export default function OnboardingPage() {
     const result = await createNewAcademyAction(formData);
 
     if (result.success) {
-      setStatus({ type: 'success', message: result.message });
+      setStatus({ 
+        type: 'success', 
+        message: result.message,
+        credentials: result.credentials
+      });
       (e.target as HTMLFormElement).reset();
       fetchAcademies(); // Recargar lista
     } else {
@@ -220,12 +224,81 @@ export default function OnboardingPage() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                     className={cn(
-                      "p-6 rounded-3xl flex items-center gap-4 border",
-                      status.type === 'success' ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-red-50 border-red-200 text-red-800"
+                      "p-8 rounded-[32px] border transition-all duration-500 shadow-xl",
+                      status.type === 'success' 
+                        ? "bg-emerald-50/50 border-emerald-200 text-emerald-950 backdrop-blur-sm" 
+                        : "bg-red-50 border-red-200 text-red-800"
                     )}
                   >
-                    {status.type === 'success' ? <CheckCircle2 className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
-                    <p className="font-bold text-sm">{status.message}</p>
+                    <div className="flex items-start gap-4 mb-6">
+                      <div className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                        status.type === 'success' ? "bg-emerald-500 text-white" : "bg-red-500 text-white"
+                      )}>
+                        {status.type === 'success' ? <CheckCircle2 className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
+                      </div>
+                      <div>
+                        <p className="font-black text-lg tracking-tight leading-tight">{status.message}</p>
+                        <p className="text-sm opacity-60 font-medium">Provisionamiento completado correctamente.</p>
+                      </div>
+                    </div>
+
+                    {status.type === 'success' && status.credentials && (
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.2 }}
+                        className="bg-white/80 border border-emerald-200 rounded-3xl p-6 space-y-4 shadow-inner"
+                      >
+                        <div className="flex items-center gap-3 border-b border-emerald-100 pb-3">
+                          <KeyRound className="w-5 h-5 text-emerald-600" />
+                          <h4 className="text-xs font-black uppercase tracking-widest text-emerald-700">Credenciales de Acceso</h4>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-tighter text-emerald-800/40 ml-1">Usuario / Email</label>
+                            <div className="bg-emerald-50 px-4 py-3 rounded-xl font-mono text-sm font-bold flex items-center justify-between border border-emerald-100/50">
+                              <span className="truncate mr-2">{status.credentials.email}</span>
+                              <button 
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(status.credentials?.email || '');
+                                  alert("Email copiado");
+                                }}
+                                className="text-emerald-600 hover:text-emerald-700 transition-colors"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-tighter text-emerald-800/40 ml-1">Contraseña</label>
+                            <div className="bg-emerald-50 px-4 py-3 rounded-xl font-mono text-sm font-bold flex items-center justify-between border border-emerald-100/50">
+                              <span>{status.credentials.password}</span>
+                              <button 
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(status.credentials?.password || '');
+                                  alert("Contraseña copiada");
+                                }}
+                                className="text-emerald-600 hover:text-emerald-700 transition-colors"
+                              >
+                                <Save className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="bg-emerald-500/10 p-3 rounded-xl flex items-center gap-3">
+                          <AlertCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <p className="text-[10px] font-bold text-emerald-700 leading-tight">
+                            Asegurate de guardar estos datos. Por seguridad, no se volverán a mostrar.
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
