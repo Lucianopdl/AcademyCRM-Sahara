@@ -939,7 +939,7 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
                             className="w-full h-14 bg-background/50 border border-border focus:border-primary/40 rounded-2xl px-5 font-bold shadow-sm outline-none transition-colors" 
                             placeholder="..." 
                           />
-                       </div>                    </div>
+                       </div>
                        
                        <Button 
                         disabled={saving} 
