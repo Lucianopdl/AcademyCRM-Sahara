@@ -122,11 +122,15 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedFee, setSelectedFee] = useState<Fee | null>(null);
+  const [editPaymentId, setEditPaymentId] = useState<string | null>(null);
+  
+  const getTodayFormatted = () => new Date().toISOString().split('T')[0];
   
   const [paymentForm, setPaymentForm] = useState({
     amount: "",
     method: "cash",
-    notes: ""
+    notes: "",
+    payment_date: getTodayFormatted()
   });
 
   // Receipt Modal State (on-demand regeneration)
@@ -316,23 +320,45 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
     setSaving(true);
     const amount = parseFloat(paymentForm.amount);
     
-    const { data: newPayment, error } = await supabase
-      .from('payments')
-      .insert([
-        {
-          student_id: student.id,
-          fee_id: selectedFee.id,
-          amount,
-          payment_method: paymentForm.method,
-          notes: paymentForm.notes || null,
-          payment_date: new Date().toISOString()
-        }
-      ])
-      .select()
-      .single();
+    // Convert date string to ISO
+    let paymentDateStr = new Date().toISOString();
+    if (paymentForm.payment_date) {
+      const parts = paymentForm.payment_date.split('-');
+      const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
+      paymentDateStr = d.toISOString();
+    }
+    
+    const paymentData = {
+      student_id: student.id,
+      fee_id: selectedFee.id,
+      amount,
+      payment_method: paymentForm.method,
+      notes: paymentForm.notes || null,
+      payment_date: paymentDateStr
+    };
+
+    let error, newPayment;
+    if (editPaymentId) {
+      const { data, error: updateError } = await supabase
+        .from('payments')
+        .update(paymentData)
+        .eq('id', editPaymentId)
+        .select()
+        .single();
+      error = updateError;
+      newPayment = data;
+    } else {
+      const { data, error: insertError } = await supabase
+        .from('payments')
+        .insert([paymentData])
+        .select()
+        .single();
+      error = insertError;
+      newPayment = data;
+    }
 
     if (!error && newPayment) {
-      // 1. Generate PDF
+      // 1. Generate PDF (Only if it's new or they want it, but we generate it anyway so they can download it)
       const pdfBlob = generateReceiptPDF({
         studentName: student.full_name,
         studentDni: student.dni || undefined,
@@ -340,7 +366,7 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
         month: months[selectedFee.month - 1],
         year: selectedFee.year,
         paymentMethod: paymentForm.method,
-        receiptNumber: newPayment.id.split('-')[0].toUpperCase(),
+        receiptNumber: newPayment.receipt_number || newPayment.id.split('-')[0].toUpperCase(),
         academyName: "Academia Sahara" // Potentially fetch from settings
       });
 
@@ -353,10 +379,11 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
 
       // 3. Close & Refresh
       setShowPaymentModal(false);
+      setEditPaymentId(null);
       fetchData();
       
-      // 4. Offer WhatsApp
-      if (student.phone) {
+      // 4. Offer WhatsApp (solo si es nuevo, o incluso si es edición es buena idea reenviarlo corregido)
+      if (student.phone && !editPaymentId) {
           const msg = createPaymentMessage(student.full_name, months[selectedFee.month - 1], selectedFee.year, amount);
           window.open(getWhatsAppLink(student.phone, msg), '_blank');
       }
@@ -516,7 +543,16 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
                              <div className="flex items-center gap-4">
                                 {fee.status !== 'paid' && (
                                    <Button 
-                                    onClick={() => { setSelectedFee(fee); setPaymentForm({...paymentForm, amount: (fee.total_amount - fee.paid_amount).toString()}); setShowPaymentModal(true); }} 
+                                    onClick={() => { 
+                                       setSelectedFee(fee); 
+                                       setEditPaymentId(null);
+                                       setPaymentForm({
+                                         ...paymentForm, 
+                                         amount: (fee.total_amount - fee.paid_amount).toString(),
+                                         payment_date: getTodayFormatted()
+                                       }); 
+                                       setShowPaymentModal(true); 
+                                    }} 
                                     className="bg-primary text-primary-foreground hover:opacity-90 px-6 h-10 rounded-xl font-black text-[10px] uppercase tracking-widest"
                                    >
                                      Cobrar
@@ -575,13 +611,33 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
                                        </span>
                                     </td>
                                     <td className="py-4 text-right">
-                                      <button
-                                        onClick={() => openReceipt(p)}
-                                        className="inline-flex items-center gap-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95"
-                                      >
-                                        <Eye className="w-3.5 h-3.5" />
-                                        Ver Recibo
-                                      </button>
+                                      <div className="flex items-center justify-end gap-2">
+                                        <button
+                                          onClick={() => {
+                                            const feeObj = fees.find(f => f.id === p.fee_id) || null;
+                                            setSelectedFee(feeObj);
+                                            setEditPaymentId(p.id);
+                                            setPaymentForm({
+                                              amount: p.amount.toString(),
+                                              method: p.payment_method,
+                                              notes: p.notes || "",
+                                              payment_date: p.payment_date ? p.payment_date.split('T')[0] : getTodayFormatted()
+                                            });
+                                            setShowPaymentModal(true);
+                                          }}
+                                          className="inline-flex items-center gap-1.5 bg-blue-500/10 hover:bg-blue-500 text-blue-500 hover:text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95"
+                                        >
+                                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                                          Editar
+                                        </button>
+                                        <button
+                                          onClick={() => openReceipt(p)}
+                                          className="inline-flex items-center gap-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95"
+                                        >
+                                          <Eye className="w-3.5 h-3.5" />
+                                          Ver Recibo
+                                        </button>
+                                      </div>
                                     </td>
                                  </tr>
                               ))}
@@ -825,7 +881,7 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
                   <div className="relative z-10">
                     <div className="flex items-center justify-between mb-8">
                        <div>
-                          <h3 className="text-2xl font-serif font-bold text-foreground italic">Registrar Pago</h3>
+                          <h3 className="text-2xl font-serif font-bold text-foreground italic">{editPaymentId ? 'Editar Pago' : 'Registrar Pago'}</h3>
                           <p className="text-muted-foreground font-medium text-sm opacity-80">Cuota de {months[selectedFee.month - 1]} {selectedFee.year}</p>
                        </div>
                        <button 
@@ -851,9 +907,7 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
                                className="w-full h-20 bg-background/50 border border-border focus:border-primary/40 rounded-3xl pl-16 pr-8 text-3xl font-black text-foreground focus:ring-4 focus:ring-primary/5 shadow-inner transition-all outline-none" 
                              />
                           </div>
-                       </div>
-                       
-                       <div className="grid grid-cols-2 gap-4">
+                       </div>                        <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-3">
                              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 block ml-4">Método</label>
                              <select 
@@ -867,15 +921,25 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
                              </select>
                           </div>
                           <div className="space-y-3">
-                             <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 block ml-4">Notas</label>
+                             <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 block ml-4">Fecha</label>
                              <input 
-                               value={paymentForm.notes} 
-                               onChange={(e) => setPaymentForm({...paymentForm, notes: e.target.value})} 
+                               type="date"
+                               value={paymentForm.payment_date} 
+                               onChange={(e) => setPaymentForm({...paymentForm, payment_date: e.target.value})} 
                                className="w-full h-14 bg-background/50 border border-border focus:border-primary/40 rounded-2xl px-5 font-bold shadow-sm outline-none transition-colors" 
-                               placeholder="..." 
                              />
                           </div>
                        </div>
+
+                       <div className="space-y-3">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 block ml-4">Notas</label>
+                          <input 
+                            value={paymentForm.notes} 
+                            onChange={(e) => setPaymentForm({...paymentForm, notes: e.target.value})} 
+                            className="w-full h-14 bg-background/50 border border-border focus:border-primary/40 rounded-2xl px-5 font-bold shadow-sm outline-none transition-colors" 
+                            placeholder="..." 
+                          />
+                       </div>                    </div>
                        
                        <Button 
                         disabled={saving} 
@@ -884,7 +948,7 @@ export default function StudentProfilePage({ params }: { params: Promise<{ id: s
                        >
                           {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : (
                             <span className="flex items-center gap-2">
-                              Confirmar y Generar Recibo
+                              {editPaymentId ? 'Guardar Cambios' : 'Confirmar y Generar Recibo'}
                               <Receipt className="w-5 h-5 group-hover:rotate-12 transition-transform" />
                             </span>
                           )}

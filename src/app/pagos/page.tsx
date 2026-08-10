@@ -82,16 +82,22 @@ export default function PagosPage() {
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
   
+  // Edit mode
+  const [editPaymentId, setEditPaymentId] = useState<string | null>(null);
+  
   // Use unified academy context
   const { academyId, userId, loading: contextLoading } = useAcademy();
   const [userEmail, setUserEmail] = useState<string | null>(null);
   
+  const getTodayFormatted = () => new Date().toISOString().split('T')[0];
+
   const [paymentForm, setPaymentForm] = useState({
     amount: "",
     method: "cash",
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
-    notes: ""
+    notes: "",
+    payment_date: getTodayFormatted()
   });
 
   const [selectedMonth, setSelectedMonth] = useState(new Date());
@@ -187,29 +193,51 @@ export default function PagosPage() {
       return;
     }
 
-    const { error } = await supabase
-      .from('payments')
-      .insert([{
-        student_id: selectedStudentId,
-        academy_id: academyId, // Inyectamos el ID de la academia para aislamiento
-        amount: amount,
-        payment_method: paymentForm.method,
-        period_month: paymentForm.month,
-        period_year: paymentForm.year,
-        notes: paymentForm.notes || null,
-        payment_date: new Date().toISOString(),
-        status: 'completed'
-      }]);
+    // Convert date string to ISO
+    let paymentDateStr = new Date().toISOString();
+    if (paymentForm.payment_date) {
+      const parts = paymentForm.payment_date.split('-');
+      const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
+      paymentDateStr = d.toISOString();
+    }
+
+    const paymentData = {
+      student_id: selectedStudentId,
+      academy_id: academyId, // Inyectamos el ID de la academia para aislamiento
+      amount: amount,
+      payment_method: paymentForm.method,
+      period_month: paymentForm.month,
+      period_year: paymentForm.year,
+      notes: paymentForm.notes || null,
+      payment_date: paymentDateStr,
+      status: 'completed'
+    };
+
+    let error;
+    if (editPaymentId) {
+      const { error: updateError } = await supabase
+        .from('payments')
+        .update(paymentData)
+        .eq('id', editPaymentId);
+      error = updateError;
+    } else {
+      const { error: insertError } = await supabase
+        .from('payments')
+        .insert([paymentData]);
+      error = insertError;
+    }
     
     if (!error) {
       setShowPaymentModal(false);
       setSelectedStudentId("");
+      setEditPaymentId(null);
       setPaymentForm({
         amount: "",
         method: "cash",
         month: new Date().getMonth() + 1,
         year: new Date().getFullYear(),
-        notes: ""
+        notes: "",
+        payment_date: getTodayFormatted()
       });
       fetchData();
     } else {
@@ -361,7 +389,19 @@ export default function PagosPage() {
               </Button>
 
               <Button 
-                onClick={() => setShowPaymentModal(true)} 
+                onClick={() => {
+                  setEditPaymentId(null);
+                  setSelectedStudentId("");
+                  setPaymentForm({
+                    amount: "",
+                    method: "cash",
+                    month: new Date().getMonth() + 1,
+                    year: new Date().getFullYear(),
+                    notes: "",
+                    payment_date: getTodayFormatted()
+                  });
+                  setShowPaymentModal(true);
+                }} 
                 className="bg-primary hover:bg-primary/90 text-primary-foreground h-14 px-10 rounded-[24px] gap-3 shadow-[0_20px_40px_-10px_rgba(var(--primary),0.3)] font-black text-[10px] uppercase tracking-[0.2em] transition-all active:scale-95"
               >
                 <PlusCircle className="w-5 h-5" /> Registrar Cobro
@@ -530,6 +570,26 @@ export default function PagosPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              setEditPaymentId(payment.id);
+                              setSelectedStudentId(payment.student_id);
+                              setPaymentForm({
+                                amount: payment.amount.toString(),
+                                method: payment.payment_method,
+                                month: payment.period_month || new Date().getMonth() + 1,
+                                year: payment.period_year || new Date().getFullYear(),
+                                notes: payment.notes || "",
+                                payment_date: payment.payment_date ? payment.payment_date.split('T')[0] : getTodayFormatted()
+                              });
+                              setShowPaymentModal(true);
+                            }}
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground/20 hover:text-blue-500 hover:bg-blue-500/10 transition-all duration-300"
+                            title="Editar registro"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
                               handleDeletePayment(payment.id);
                             }}
                             className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground/20 hover:text-rose-500 hover:bg-rose-500/10 transition-all duration-300"
@@ -622,7 +682,7 @@ export default function PagosPage() {
                 <div className="flex-1 p-8 md:p-16 overflow-y-auto bg-card relative">
                   <header className="flex items-center justify-between mb-12">
                     <div>
-                      <h3 className="text-3xl font-serif font-black tracking-tighter">Liquidación <span className="text-primary italic font-normal">Mensual</span></h3>
+                      <h3 className="text-3xl font-serif font-black tracking-tighter">{editPaymentId ? 'Editar' : 'Liquidación'} <span className="text-primary italic font-normal">{editPaymentId ? 'Transacción' : 'Mensual'}</span></h3>
                       <div className="flex items-center gap-2 mt-2">
                         <div className="w-8 h-[1px] bg-primary/30" />
                         <p className="text-[10px] text-muted-foreground/40 font-black uppercase tracking-[0.3em]">Parámetros de Cobro</p>
@@ -671,6 +731,16 @@ export default function PagosPage() {
                         <option value="transfer" className="bg-card">Transferencia 🏦</option>
                         <option value="card" className="bg-card">Posnet / Tarjeta 💳</option>
                       </select>
+                    </div>
+
+                    <div className="sm:col-span-2 space-y-4">
+                      <label className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/40 ml-4">Fecha del Cobro</label>
+                      <input 
+                        type="date"
+                        value={paymentForm.payment_date}
+                        onChange={(e) => setPaymentForm({...paymentForm, payment_date: e.target.value})}
+                        className="w-full h-16 bg-muted/10 border border-border rounded-3xl px-8 text-sm font-medium outline-none focus:ring-4 focus:ring-primary/5 transition-all text-foreground"
+                      />
                     </div>
 
                     <div className="sm:col-span-2 space-y-4">
