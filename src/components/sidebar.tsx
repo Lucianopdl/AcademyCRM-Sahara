@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   FolderOpen,
   Briefcase,
+  UsersRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -25,6 +26,7 @@ import { useAcademy } from "@/hooks/use-academy";
 const navItems = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Alumnos", href: "/alumnos", icon: Users },
+  { name: "Grupos", href: "/grupos", icon: UsersRound },
   { name: "Clases y Talleres", href: "/clases", icon: GraduationCap },
   { name: "Cuotas y Pagos", href: "/pagos", icon: CreditCard },
   { name: "Asistencias", href: "/asistencias", icon: ClipboardCheck },

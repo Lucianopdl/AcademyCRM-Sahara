@@ -40,7 +40,9 @@ import {
   MessageCircle,
   Receipt,
   Download,
-  Trash2
+  Trash2,
+  UsersRound,
+  GraduationCap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
@@ -83,21 +85,43 @@ interface Payment {
   amount: number;
 }
 
+interface Group {
+  id: string;
+  name: string;
+  description: string | null;
+  academy_id: string;
+}
+
+interface StudentGroup {
+  student_id: string;
+  group_id: string;
+}
+
 export default function AlumnosPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [studentGroups, setStudentGroups] = useState<StudentGroup[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [enrollments, setEnrollments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [showPaymentPanel, setShowPaymentPanel] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [assigningStudent, setAssigningStudent] = useState<Student | null>(null);
+  const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterGroup, setFilterGroup] = useState<string>("all");
+  const [filterClass, setFilterClass] = useState<string>("all");
   const [hasPromo, setHasPromo] = useState(false);
+  // Grupos seleccionados en formulario de alumno (checkboxes)
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkLoading, setIsBulkLoading] = useState(false);
@@ -197,6 +221,39 @@ export default function AlumnosPage() {
         .eq('period_year', currentYear);
       
       if (payData) setPayments(payData as Payment[]);
+
+      // 4. Fetch Groups - Filtered by academy
+      const { data: groupsData } = await supabase
+        .from('groups')
+        .select('*')
+        .eq('academy_id', academyId)
+        .order('name');
+      
+      if (groupsData) setGroups(groupsData as Group[]);
+
+      // 5. Fetch Student-Group relationships
+      const { data: sgData } = await supabase
+        .from('student_groups')
+        .select('student_id, group_id');
+      
+      if (sgData) setStudentGroups(sgData as StudentGroup[]);
+
+      // 6. Fetch Classes - Filtered by academy
+      const { data: classesData } = await supabase
+        .from('classes')
+        .select('*')
+        .eq('academy_id', academyId)
+        .order('name');
+      
+      if (classesData) setClasses(classesData);
+
+      // 7. Fetch Enrollments - Filtered by academy
+      const { data: enrollData } = await supabase
+        .from('enrollments')
+        .select('student_id, class_id')
+        .eq('academy_id', academyId);
+      
+      if (enrollData) setEnrollments(enrollData);
     } catch (error) {
       console.error("Error fetching initial data:", error);
     } finally {
@@ -292,18 +349,35 @@ export default function AlumnosPage() {
        }
     }
     
-    if (!error) {
+    if (!error && createdStudentId) {
+      // Sincronizar grupos del alumno
+      try {
+        // Primero eliminar todas las asignaciones existentes del alumno
+        await supabase.from('student_groups').delete().eq('student_id', createdStudentId);
+        // Luego insertar las nuevas asignaciones
+        if (selectedGroupIds.length > 0) {
+          const groupInserts = selectedGroupIds.map(gid => ({
+            student_id: createdStudentId,
+            group_id: gid,
+          }));
+          await supabase.from('student_groups').insert(groupInserts);
+        }
+      } catch (groupError) {
+        console.error("Error syncing student groups:", groupError);
+      }
+
       setFormData({
         full_name: "", email: "", phone: "", dni: "", birthdate: "", age: "", address: "", category_id: "", discount_value: "0", discount_type: "percentage"
       });
       setHasPromo(false);
+      setSelectedGroupIds([]);
       setEditingStudent(null);
       setShowAddForm(false);
       setSearch(""); // Limpiar búsqueda para ver el nuevo alumno
       setActiveTab('active'); // Asegurar pestaña de activos
       fetchInitialData();
       showAlert("¡Operación Exitosa!", editingStudent ? "Los datos se han actualizado correctamente." : "El alumno ha sido inscripto y se le ha generado su cargo inicial.", "success");
-    } else {
+    } else if (error) {
       showAlert("Error", error.message, "error");
     }
     setSaving(false);
@@ -540,6 +614,95 @@ export default function AlumnosPage() {
     setIsBulkLoading(false);
   };
 
+  const handleConfirmIndividualClass = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!assigningStudent || !selectedClassId || !academyId) return;
+    setSaving(true);
+    try {
+      const selectedClass = classes.find(c => c.id === selectedClassId);
+      const categoryId = selectedClass?.category_id;
+
+      // 1. Crear el enrollment (inscripción)
+      const { error: enrollError } = await supabase.from('enrollments').upsert({
+        student_id: assigningStudent.id,
+        class_id: selectedClassId,
+        academy_id: academyId
+      }, { onConflict: 'student_id, class_id' });
+
+      if (enrollError) throw enrollError;
+
+      // 2. Actualizar category_id en el estudiante (para reflejar disciplina en UI de alumnos)
+      if (categoryId) {
+        const { error: studentError } = await supabase
+          .from('students')
+          .update({ category_id: categoryId })
+          .eq('id', assigningStudent.id);
+
+        if (studentError) throw studentError;
+      }
+
+      setAssigningStudent(null);
+      setSelectedClassId("");
+      fetchInitialData();
+      showAlert("Clase Asignada", "El alumno ha sido inscripto en la clase seleccionada con éxito.", "success");
+    } catch (err: any) {
+      showAlert("Error", err.message, "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleBulkAssignClass = async (classId: string) => {
+    if (!selectedIds.length || !classId || !academyId) return;
+    
+    const executeBulkAssign = async () => {
+      setIsBulkLoading(true);
+      try {
+        const selectedClass = classes.find(c => c.id === classId);
+        const categoryId = selectedClass?.category_id;
+
+        // Crear enrollments para todos los seleccionados
+        const enrollmentsToInsert = selectedIds.map(sid => ({
+          student_id: sid,
+          class_id: classId,
+          academy_id: academyId
+        }));
+
+        const { error: enrollError } = await supabase
+          .from('enrollments')
+          .upsert(enrollmentsToInsert, { onConflict: 'student_id, class_id' });
+
+        if (enrollError) throw enrollError;
+
+        // Actualizar category_id para todos los seleccionados
+        if (categoryId) {
+          const { error: studentError } = await supabase
+            .from('students')
+            .update({ category_id: categoryId })
+            .in('id', selectedIds)
+            .eq('academy_id', academyId);
+
+          if (studentError) throw studentError;
+        }
+
+        setSelectedIds([]);
+        fetchInitialData();
+        showAlert("Éxito", `Se han inscrito los ${selectedIds.length} alumnos en la clase seleccionada.`, "success");
+      } catch (err: any) {
+        showAlert("Error", err.message, "error");
+      } finally {
+        setIsBulkLoading(false);
+      }
+    };
+
+    const targetClass = classes.find(c => c.id === classId);
+    showConfirm(
+      "Confirmar Inscripción Masiva", 
+      `¿Estás seguro de inscribir a los ${selectedIds.length} alumnos seleccionados en la clase "${targetClass?.name || ''}"?`, 
+      executeBulkAssign
+    );
+  };
+
   const handleBulkDelete = async () => {
     if (!selectedIds.length) return;
     
@@ -619,6 +782,11 @@ export default function AlumnosPage() {
       discount_value: student.discount_value?.toString() || "0",
       discount_type: student.discount_type || "percentage"
     });
+    // Cargar los grupos actuales del alumno
+    const currentGroupIds = studentGroups
+      .filter(sg => sg.student_id === student.id)
+      .map(sg => sg.group_id);
+    setSelectedGroupIds(currentGroupIds);
     setShowAddForm(true);
   };
 
@@ -651,7 +819,15 @@ export default function AlumnosPage() {
                           (filterStatus === "paid" && isPaid) || 
                           (filterStatus === "debtor" && !isPaid);
 
-    return matchesSearch && matchesStatus && matchesCategory && matchesPayment;
+    // Filtro por grupo: el alumno debe tener ese group_id en student_groups
+    const matchesGroup = filterGroup === "all" || 
+                        studentGroups.some(sg => sg.student_id === s.id && sg.group_id === filterGroup);
+
+    // Filtro por clase: el alumno debe estar inscrito en esa clase en enrollments
+    const matchesClass = filterClass === "all" ||
+                        enrollments.some(e => e.student_id === s.id && e.class_id === filterClass);
+
+    return matchesSearch && matchesStatus && matchesCategory && matchesPayment && matchesGroup && matchesClass;
   });
 
   if (!loading && !academyId) {
@@ -726,6 +902,7 @@ export default function AlumnosPage() {
                 if (showAddForm) {
                   setEditingStudent(null);
                   setHasPromo(false);
+                  setSelectedGroupIds([]);
                   setFormData({ full_name: "", email: "", phone: "", dni: "", birthdate: "", age: "", address: "", category_id: "", discount_value: "0", discount_type: "percentage" });
                 }
                 setShowAddForm(!showAddForm);
@@ -875,12 +1052,51 @@ export default function AlumnosPage() {
                   </div>
                 </div>
 
+                {/* Sección de Grupos */}
+                {groups.length > 0 && (
+                  <div className="pt-4 border-t border-border/50">
+                    <div className="flex items-center gap-2 mb-4">
+                      <UsersRound className="w-4 h-4 text-primary" />
+                      <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/40">Grupos del Alumno</h4>
+                      <span className="text-[9px] text-foreground/30 font-medium">(opcional)</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {groups.map(group => {
+                        const isSelected = selectedGroupIds.includes(group.id);
+                        return (
+                          <button
+                            key={group.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedGroupIds(prev =>
+                                isSelected
+                                  ? prev.filter(id => id !== group.id)
+                                  : [...prev, group.id]
+                              );
+                            }}
+                            className={cn(
+                              "flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all",
+                              isSelected
+                                ? "bg-primary text-white border-primary shadow-lg shadow-primary/20"
+                                : "bg-muted/20 text-foreground/60 border-border/50 hover:border-primary/40 hover:bg-primary/5"
+                            )}
+                          >
+                            {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                            {group.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-end gap-4">
                    <Button disabled={saving} type="submit" className="bg-foreground hover:bg-primary text-background hover:text-white px-16 h-18 rounded-[32px] font-black text-lg shadow-xl transition-all active:scale-95 py-6">
                       {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : (editingStudent ? "Guardar Cambios" : "Confirmar Alta de Alumno")}
                    </Button>
                 </div>
               </form>
+
             </motion.div>
           )}
         </AnimatePresence>
@@ -975,6 +1191,51 @@ export default function AlumnosPage() {
           )}
         </AnimatePresence>
 
+        {/* Modal de Asignación Individual de Clase */}
+        <AnimatePresence>
+          {assigningStudent && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-background/60 backdrop-blur-md">
+              <motion.div initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} className="bg-card w-full max-w-md rounded-[40px] shadow-2xl border border-border overflow-hidden">
+                <div className="bg-gradient-to-br from-primary/10 to-transparent p-8 border-b border-border/50">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/20"><GraduationCap className="w-7 h-7" /></div>
+                    <div>
+                      <h3 className="text-2xl font-serif font-black text-foreground">Asignar Clase</h3>
+                      <p className="text-xs text-foreground/40 font-bold uppercase tracking-widest">{assigningStudent.full_name}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <form onSubmit={handleConfirmIndividualClass}>
+                  <div className="p-8 space-y-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-foreground/40 pl-1">Seleccionar Clase</label>
+                      <select 
+                        required
+                        value={selectedClassId} 
+                        onChange={(e) => setSelectedClassId(e.target.value)} 
+                        className="w-full bg-muted/30 border border-border rounded-2xl px-5 py-4 font-bold text-foreground outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                      >
+                        <option value="" disabled className="bg-card text-foreground">Elegir clase...</option>
+                        {classes.map(cls => (
+                          <option key={cls.id} value={cls.id} className="bg-card text-foreground">{cls.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="p-8 bg-muted/10 flex gap-4">
+                    <button type="button" onClick={() => { setAssigningStudent(null); setSelectedClassId(""); }} className="flex-1 py-5 rounded-[24px] font-black text-[10px] uppercase tracking-widest text-foreground/40 hover:bg-muted/50 transition-all border border-border/50">Cancelar</button>
+                    <button type="submit" disabled={saving} className="flex-[2] bg-foreground hover:bg-primary text-background hover:text-white py-5 rounded-[24px] font-black text-[10px] uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2">
+                      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" /> Asignar Clase</>}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Search and Filters Bar */}
         <section className="mb-8 flex flex-col lg:flex-row gap-4">
           <div className="relative flex-1 group">
@@ -1014,11 +1275,42 @@ export default function AlumnosPage() {
               </select>
             </div>
 
-            <Button className="shrink-0 w-12 lg:w-14 h-12 lg:h-14 rounded-2xl lg:rounded-3xl bg-card border border-border text-foreground/20 hover:text-primary hover:bg-muted/50 transition-all shadow-sm flex items-center justify-center p-0">
-              <Filter className="w-5 h-5" />
-            </Button>
+            {/* Filtro por Grupo */}
+            {groups.length > 0 && (
+              <div className="relative flex-1 lg:w-48 group">
+                <UsersRound className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/20 group-focus-within:text-primary transition-colors pointer-events-none" />
+                <select
+                  value={filterGroup}
+                  onChange={(e) => setFilterGroup(e.target.value)}
+                  className="w-full h-12 lg:h-14 bg-card border border-border rounded-2xl lg:rounded-3xl pl-10 pr-4 text-foreground/80 font-medium focus:ring-2 focus:ring-primary/20 outline-none transition-all appearance-none cursor-pointer"
+                >
+                  <option value="all" className="bg-card text-foreground">Grupos (Todo)</option>
+                  {groups.map(g => (
+                    <option key={g.id} value={g.id} className="bg-card text-foreground">{g.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Filtro por Clase */}
+            {classes.length > 0 && (
+              <div className="relative flex-1 lg:w-48 group">
+                <GraduationCap className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/20 group-focus-within:text-primary transition-colors pointer-events-none" />
+                <select
+                  value={filterClass}
+                  onChange={(e) => setFilterClass(e.target.value)}
+                  className="w-full h-12 lg:h-14 bg-card border border-border rounded-2xl lg:rounded-3xl pl-10 pr-4 text-foreground/80 font-medium focus:ring-2 focus:ring-primary/20 outline-none transition-all appearance-none cursor-pointer"
+                >
+                  <option value="all" className="bg-card text-foreground">Clases (Todo)</option>
+                  {classes.map(cls => (
+                    <option key={cls.id} value={cls.id} className="bg-card text-foreground">{cls.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         </section>
+
 
         {/* Listado Principal */}
         {/* Listado Principal - Mobile First Display Logic */}
@@ -1059,10 +1351,20 @@ export default function AlumnosPage() {
                       </div>
                       <div className="min-w-0">
                         <Link href={`/alumnos/${s.id}`} className="font-serif font-black text-xl text-foreground leading-tight block truncate group-active:text-primary transition-colors">{s.full_name}</Link>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
                           <span className="text-[10px] font-black text-primary uppercase tracking-[0.1em] bg-primary/5 px-2 py-0.5 rounded-md border border-primary/10">
                             {categories.find(c => c.id === s.category_id)?.name || 'SIN CLASE'}
                           </span>
+                          {studentGroups
+                            .filter(sg => sg.student_id === s.id)
+                            .map(sg => {
+                              const group = groups.find(g => g.id === sg.group_id);
+                              return group ? (
+                                <span key={sg.group_id} className="text-[9px] font-black text-indigo-600 uppercase tracking-[0.1em] bg-indigo-500/5 px-2 py-0.5 rounded-md border border-indigo-500/10">
+                                  {group.name}
+                                </span>
+                              ) : null;
+                            })}
                         </div>
                       </div>
                     </div>
@@ -1106,6 +1408,14 @@ export default function AlumnosPage() {
                   {/* Mobile Actions - Thumb Friendly */}
                   <div className="flex items-center justify-between pt-5 border-t border-border/50 gap-3">
                     <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => { setAssigningStudent(s); setSelectedClassId(""); }}
+                        className="w-11 h-11 rounded-xl border border-indigo-500/20 bg-indigo-500/5 flex items-center justify-center text-indigo-500 active:scale-95 transition-all shadow-sm"
+                        title="Asignar Clase"
+                      >
+                        <GraduationCap className="w-5 h-5" />
+                      </button>
+
                       <button 
                         onClick={() => openEdit(s)}
                         className="w-11 h-11 rounded-xl border border-border/50 bg-muted/10 flex items-center justify-center text-foreground active:scale-95 transition-all shadow-sm"
@@ -1195,9 +1505,21 @@ export default function AlumnosPage() {
                           <div className="w-12 h-12 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-serif font-bold text-xl shadow-sm">{s.full_name.charAt(0)}</div>
                           <Link href={`/alumnos/${s.id}`} className="group/name">
                             <p className="font-serif font-bold text-xl text-foreground group-hover/name:text-primary transition-colors leading-none mb-2">{s.full_name}</p>
-                            <span className="text-[9px] font-black text-primary uppercase tracking-widest bg-primary/5 px-2 py-1 rounded-md border border-primary/10">
-                              {categories.find(c => c.id === s.category_id)?.name || 'SIN CLASE'}
-                            </span>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="text-[9px] font-black text-primary uppercase tracking-widest bg-primary/5 px-2 py-1 rounded-md border border-primary/10">
+                                {categories.find(c => c.id === s.category_id)?.name || 'SIN CLASE'}
+                              </span>
+                              {studentGroups
+                                .filter(sg => sg.student_id === s.id)
+                                .map(sg => {
+                                  const group = groups.find(g => g.id === sg.group_id);
+                                  return group ? (
+                                    <span key={sg.group_id} className="text-[9px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-500/5 px-2 py-1 rounded-md border border-indigo-500/10">
+                                      {group.name}
+                                    </span>
+                                  ) : null;
+                                })}
+                            </div>
                           </Link>
                        </div>
                     </td>
@@ -1230,6 +1552,13 @@ export default function AlumnosPage() {
                               {hasPending ? "Cobrar" : "Generar"}
                             </Button>
                           )}
+                          <button 
+                            onClick={() => { setAssigningStudent(s); setSelectedClassId(""); }}
+                            className="w-11 h-11 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 flex items-center justify-center text-indigo-500 hover:bg-indigo-500 hover:text-white transition-all active:scale-90 shadow-sm"
+                            title="Asignar Clase"
+                          >
+                            <GraduationCap className="w-4 h-4" />
+                          </button>
                           <Link 
                             href={`/alumnos/${s.id}`} 
                             className="w-11 h-11 rounded-2xl border border-border/50 bg-muted/10 flex items-center justify-center text-foreground hover:bg-primary hover:text-white transition-all active:scale-90 shadow-sm"
@@ -1565,6 +1894,21 @@ _Sahara · Gestión Académica_`);
                     <option value="" disabled className="bg-card text-foreground">Asignar a...</option>
                     {categories.map(cat => (
                       <option key={cat.id} value={cat.id} className="bg-card text-foreground">{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+ 
+                <div className="bg-muted/50 hover:bg-muted transition-all rounded-2xl p-2 px-4 border border-border/50 flex flex-col gap-0.5 min-w-[130px] flex-1 sm:flex-none">
+                  <span className="text-[7px] font-black uppercase tracking-widest text-primary">Clase</span>
+                  <select 
+                    onChange={(e) => handleBulkAssignClass(e.target.value)}
+                    disabled={isBulkLoading}
+                    value=""
+                    className="bg-transparent border-none text-[11px] font-bold focus:ring-0 cursor-pointer p-0 text-foreground w-full outline-none appearance-none"
+                  >
+                    <option value="" disabled className="bg-card text-foreground">Asignar Clase...</option>
+                    {classes.map(cls => (
+                      <option key={cls.id} value={cls.id} className="bg-card text-foreground">{cls.name}</option>
                     ))}
                   </select>
                 </div>
